@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Accueil • Coinche{% endblock %}
+{% block content %}
+  <div class="text-center py-5">
+    <h1 class="display-5">Coinche Tracker</h1>
+    <p class="lead">Enregistrez vos parties de coinche facilement.</p>
+    <div class="d-flex gap-2 justify-content-center mt-3">
+      <a href="{{ url_for('games_list') }}" class="btn btn-primary">Voir les parties</a>
+      {% if session.get('user') %}
+        <a href="{{ url_for('new_game') }}" class="btn btn-success">Nouvelle partie</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Se connecter</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

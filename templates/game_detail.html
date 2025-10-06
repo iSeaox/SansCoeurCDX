@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Partie #{{ game.id }}{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Partie #{{ game.id }}</h2>
+    <span class="badge text-bg-secondary">{{ game.state }}</span>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="fw-bold mb-1">Equipes</div>
+          <div class="mb-1"><strong>A</strong>: {% for p in team_a %}{{ p[1] }}{% if not loop.last %}, {% endif %}{% endfor %}</div>
+          <div><strong>B</strong>: {% for p in team_b %}{{ p[1] }}{% if not loop.last %}, {% endif %}{% endfor %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="fw-bold mb-1">Score</div>
+          <div class="display-6">{{ game.score_a }} — {{ game.score_b }}</div>
+          <div class="text-muted">Objectif: {{ game.target_points }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="fw-bold mb-1">Dates</div>
+          <div><small>Créée: {{ game.created_at }}</small></div>
+          <div><small>MAJ: {{ game.updated_at }}</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h4>Manches</h4>
+  {% if hands %}
+  <div class="table-responsive mb-4">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Preneur</th>
+          <th>Contrat</th>
+          <th>Atout</th>
+          <th>Belotes (A/B)</th>
+          <th>Général</th>
+          <th>Coinche</th>
+          <th>Surcoinche</th>
+          <th>Capot par</th>
+          <th>Score A</th>
+          <th>Score B</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in hands %}
+        <tr>
+          <td>{{ h[1] }}</td>
+          <td>{{ h[3] or '-' }}</td>
+          <td>{{ h[4] or '-' }}</td>
+          <td>{{ h[5] or '-' }}</td>
+          <td>{{ h[13] }}/{{ h[14] }}</td>
+          <td>{{ 'Oui' if h[15] else 'Non' }}</td>
+          <td>{{ 'Oui' if h[10] else 'Non' }}</td>
+          <td>{{ 'Oui' if h[11] else 'Non' }}</td>
+          <td>
+            {% if h[12] == 'A' %}Équipe A{% elif h[12] == 'B' %}Équipe B{% else %}—{% endif %}
+          </td>
+          <td>{{ h[6] }}</td>
+          <td>{{ h[7] }}</td>
+          <td><small class="text-muted">{{ h[16] }}</small></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="text-muted mb-4">Aucune manche enregistrée.</div>
+  {% endif %}
+
+  {% if can_add_hand %}
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Ajouter une manche</h5>
+      <form method="post" class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Preneur</label>
+          <select name="taker_user_id" class="form-select">
+            <option value="">— Aucun / Non précisé —</option>
+            {% for p in players %}
+              <option value="{{ p[0] }}" data-team="{{ p[2] }}">{{ p[1] }} ({{ p[2] }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Contrat</label>
+          <select class="form-select" name="contract" id="contract">
+            <option value="">— Sélectionner —</option>
+            <optgroup label="Contrat numérique">
+              <option value="80">80</option>
+              <option value="90">90</option>
+              <option value="100">100</option>
+              <option value="110">110</option>
+              <option value="120">120</option>
+              <option value="130">130</option>
+              <option value="140">140</option>
+              <option value="150">150</option>
+              <option value="160">160</option>
+              <option value="170">170</option>
+              <option value="180">180</option>
+            </optgroup>
+            <optgroup label="Spéciaux">
+              <option value="Générale">Générale</option>
+              <option value="Capot">Capot</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Atout</label>
+          <select class="form-select" name="trump">
+            <option value="">— Non précisé —</option>
+            <option value="Pique">Pique</option>
+            <option value="Trèfle">Trèfle</option>
+            <option value="Carreau">Carreau</option>
+            <option value="Coeur">Coeur</option>
+            <option value="Sans atout">Sans atout</option>
+            <option value="Tout atout">Tout atout</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Score équipe A</label>
+          <input type="number" class="form-control" name="score_team_a" value="0" min="0" max="162">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Score équipe B</label>
+          <input type="number" class="form-control" name="score_team_b" value="0" min="0" max="162">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Belotes équipe A</label>
+          <input type="number" class="form-control" name="belote_a" value="0" min="0">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Belotes équipe B</label>
+          <input type="number" class="form-control" name="belote_b" value="0" min="0">
+        </div>
+        <div class="col-md-6 d-flex align-items-end gap-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="coinche" name="coinche">
+            <label class="form-check-label" for="coinche">Coinche</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="surcoinche" name="surcoinche">
+            <label class="form-check-label" for="surcoinche">Surcoinche</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="general" name="general">
+            <label class="form-check-label" for="general">Générale</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-success">Ajouter la manche</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+  {% block scripts %}
+    <script src="{{ url_for('static', filename='js/game_detail.js') }}"></script>
+  {% endblock %}
+{% endblock %}

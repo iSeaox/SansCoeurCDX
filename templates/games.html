@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Parties • Coinche{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Parties récentes</h2>
+    {% if session.get('user') %}
+      <a href="{{ url_for('new_game') }}" class="btn btn-primary">Nouvelle partie</a>
+    {% endif %}
+  </div>
+
+  {% if games %}
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Equipe A</th>
+            <th>Equipe B</th>
+            <th>Score</th>
+            <th>Objectif</th>
+            <th>Etat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in games %}
+            <tr>
+              <td><a href="{{ url_for('game_detail', game_id=g.id) }}"><small class="text-muted">{{ g.created_at }}</small></a></td>
+              <td>{{ g.team_a }}</td>
+              <td>{{ g.team_b }}</td>
+              <td><strong>{{ g.score_a }}</strong> - <strong>{{ g.score_b }}</strong></td>
+              <td>{{ g.target_points }}</td>
+              <td><span class="badge text-bg-secondary">{{ g.state }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="text-muted">Aucune partie enregistrée pour le moment.</div>
+  {% endif %}
+{% endblock %}

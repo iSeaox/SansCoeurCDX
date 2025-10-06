@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Profil{% endblock %}
+{% block content %}
+  <h2 class="mb-3">Profil</h2>
+  <div class="mb-4">
+    <div><strong>Utilisateur:</strong> {{ username }}</div>
+  </div>
+
+  <h4 class="mb-2">Parties en cours</h4>
+  {% if ongoing %}
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Créée</th>
+            <th>Dernière MAJ</th>
+            <th>Equipe A</th>
+            <th>Equipe B</th>
+            <th>Score</th>
+            <th>Objectif</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in ongoing %}
+            <tr>
+              <td><small class="text-muted">{{ g.created_at }}</small></td>
+              <td><small class="text-muted">{{ g.updated_at }}</small></td>
+              <td>{{ g.team_a }}</td>
+              <td>{{ g.team_b }}</td>
+              <td><strong>{{ g.score_a }}</strong> - <strong>{{ g.score_b }}</strong></td>
+              <td>{{ g.target_points }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="text-muted">Aucune partie en cours.</div>
+  {% endif %}
+{% endblock %}

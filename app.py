@@ -80,13 +80,18 @@ def create_app():
 				return render_template('login.html')
 
 			row = users_repo.find_user_by_username(g.db, username)
-			if row and row[3] and check_password_hash(row[2], password):
+			if row and check_password_hash(row[2], password):
+				if(not(row[3])):
+					flash('Votre compte est en cours de validation', 'success')
+					return render_template('login.html')
+
 				session.clear()
 				session['user_id'] = row[0]
 				session['user'] = row[1]
+				session['is_admin'] = bool(row[4]) if len(row) > 4 else False
 				flash('Connexion réussie.', 'success')
 				return redirect(url_for('index'))
-
+		
 			flash('Identifiants invalides.', 'danger')
 		return render_template('login.html')
 
@@ -99,6 +104,12 @@ def create_app():
 	def login_required():
 		if not session.get('user'):
 			flash('Veuillez vous connecter pour continuer.', 'warning')
+			return False
+		return True
+
+	def admin_required():
+		if not session.get('user') or not session.get('is_admin'):
+			flash('Accès administrateur requis.', 'danger')
 			return False
 		return True
 
@@ -464,6 +475,49 @@ def create_app():
 			for r in rows
 		]
 		return render_template('profile.html', username=username, ongoing=ongoing)
+
+	@app.route('/admin')
+	def admin_panel():
+		if not admin_required():
+			return redirect(url_for('index'))
+		users = users_repo.list_all_users(g.db)
+		return render_template('admin.html', users=users)
+
+	@app.route('/admin/toggle_user/<int:user_id>', methods=['POST'])
+	def toggle_user(user_id: int):
+		if not admin_required():
+			return redirect(url_for('index'))
+		success = users_repo.toggle_user_status(g.db, user_id)
+		if success:
+			flash('Statut utilisateur modifié.', 'success')
+		else:
+			flash('Erreur lors de la modification.', 'danger')
+		return redirect(url_for('admin_panel'))
+
+	# CLI command to (re)initialize the database
+	@app.cli.command('init-db')
+	def init_db_command():
+		init_db(app)
+		print('Base de données initialisée.')
+
+	# CLI to create a user
+	@app.cli.command('create-user')
+	@click.option('--username', prompt=True, help='Nom d\'utilisateur (unique, insensible à la casse)')
+	@click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='Mot de passe')
+	@click.option('--admin', is_flag=True, help='Créer un utilisateur administrateur')
+	def create_user_command(username: str, password: str, admin: bool):
+		username = username.strip()
+		if not username or not password or len(password) < 8:
+			print('Erreur: nom d\'utilisateur et mot de passe (>= 8 caractères) requis.')
+			return
+		password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+		with get_db(app) as db:
+			user_id = users_repo.create_user_with_admin(db, username, password_hash, datetime.utcnow().isoformat(timespec='seconds'), admin)
+			if user_id is None:
+				print('Erreur: cet utilisateur existe déjà.')
+				return
+		admin_status = " (administrateur)" if admin else ""
+		print(f"Utilisateur '{username}'{admin_status} créé avec succès.")
 
 	return app
 

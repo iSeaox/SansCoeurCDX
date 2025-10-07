@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Administration{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Administration</h2>
+    <span class="badge text-bg-primary">{{ users|length }} utilisateurs</span>
+  </div>
+
+  {% if users %}
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nom d'utilisateur</th>
+            <th>Statut</th>
+            <th>Admin</th>
+            <th>Créé le</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            <tr>
+              <td>{{ u[0] }}</td>
+              <td>
+                <strong>{{ u[1] }}</strong>
+                {% if u[0] == session.get('user_id') %}
+                  <span class="badge text-bg-info ms-1">Vous</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u[2] %}
+                  <span class="badge text-bg-success">Actif</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Inactif</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u[3] %}
+                  <span class="badge text-bg-warning">Admin</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td><small class="text-muted">{{ u[4]|fr_datetime }}</small></td>
+              <td class="text-end">
+                {% if u[0] != session.get('user_id') %}
+                  <form method="post" action="{{ url_for('toggle_user', user_id=u[0]) }}" class="d-inline">
+                    {% if u[2] %}
+                      <button type="submit" class="btn btn-sm btn-outline-warning" 
+                              onclick="return confirm('Désactiver cet utilisateur ?');">
+                        Désactiver
+                      </button>
+                    {% else %}
+                      <button type="submit" class="btn btn-sm btn-outline-success"
+                              onclick="return confirm('Réactiver cet utilisateur ?');">
+                        Réactiver
+                      </button>
+                    {% endif %}
+                  </form>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="text-muted">Aucun utilisateur trouvé.</div>
+  {% endif %}
+
+  <div class="mt-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Informations</h5>
+        <ul class="mb-0">
+          <li>Seuls les administrateurs peuvent accéder à cette page</li>
+          <li>Vous ne pouvez pas modifier votre propre statut</li>
+          <li>Les utilisateurs inactifs ne peuvent pas se connecter</li>
+          <li>Utilisez la CLI <code>create-user</code> pour créer de nouveaux utilisateurs</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}

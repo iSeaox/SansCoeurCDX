@@ -90,6 +90,11 @@ def init_db(app, db: sqlite3.Connection | None = None):
         if 'target_points' not in cols:
             cur.execute("ALTER TABLE games ADD COLUMN target_points INTEGER NOT NULL DEFAULT 1000")
 
+        cur.execute("PRAGMA table_info('users')")
+        user_cols = [c[1] for c in cur.fetchall()]
+        if 'is_admin' not in user_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+
         cur.execute("PRAGMA table_info('hands')")
         h_cols = [c[1] for c in cur.fetchall()]
         if 'belote_a' not in h_cols:

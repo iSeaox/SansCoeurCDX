@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Modifier la manche #{{ hand[2] }}{% endblock %}
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <h2 class="mb-3">Modifier la manche #{{ hand[2] }}</h2>
+      <form method="post" class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Preneur</label>
+          <select name="taker_user_id" class="form-select">
+            <option value="">— Aucun / Non précisé —</option>
+            {% for p in players %}
+              <option value="{{ p[0] }}" {% if hand[3] == p[0] %}selected{% endif %}>{{ p[1] }} ({{ p[2] }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Contrat</label>
+          <select class="form-select" name="contract" id="contract">
+            <option value="">— Sélectionner —</option>
+            <optgroup label="Contrat numérique">
+              {% for val in [80,90,100,110,120,130,140,150,160,170,180] %}
+              <option value="{{ val }}" {% if hand[4] == val|string %}selected{% endif %}>{{ val }}</option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Spéciaux">
+              <option value="Générale" {% if hand[4] == 'Générale' %}selected{% endif %}>Générale</option>
+              <option value="Capot" {% if hand[4] == 'Capot' %}selected{% endif %}>Capot</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Atout</label>
+          <select class="form-select" name="trump">
+            {% set tr = hand[5] or '' %}
+            <option value="" {% if tr == '' %}selected{% endif %}>— Non précisé —</option>
+            {% for suit in ['Pique','Trèfle','Carreau','Coeur','Sans atout','Tout atout'] %}
+            <option value="{{ suit }}" {% if tr == suit %}selected{% endif %}>{{ suit }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Points réalisés équipe A</label>
+          <input type="number" class="form-control" name="score_team_a" value="{{ hand[8] }}" min="0" max="162">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Points réalisés équipe B</label>
+          <input type="number" class="form-control" name="score_team_b" value="{{ hand[9] }}" min="0" max="162">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Belotes équipe A</label>
+          <input type="number" class="form-control" name="belote_a" value="{{ hand[13] }}" min="0">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Belotes équipe B</label>
+          <input type="number" class="form-control" name="belote_b" value="{{ hand[14] }}" min="0">
+        </div>
+        <div class="col-md-6 d-flex align-items-end gap-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="coinche" name="coinche" {% if hand[10] %}checked{% endif %}>
+            <label class="form-check-label" for="coinche">Coinche</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="surcoinche" name="surcoinche" {% if hand[11] %}checked{% endif %}>
+            <label class="form-check-label" for="surcoinche">Surcoinche</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="general" name="general" {% if hand[15] %}checked{% endif %}>
+            <label class="form-check-label" for="general">Générale</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+          <a href="{{ url_for('game_detail', game_id=game_id) }}" class="btn btn-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

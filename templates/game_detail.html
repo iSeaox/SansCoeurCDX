@@ -29,12 +29,22 @@
       <div class="card">
         <div class="card-body">
           <div class="fw-bold mb-1">Dates</div>
-          <div><small>Créée: {{ game.created_at }}</small></div>
-          <div><small>MAJ: {{ game.updated_at }}</small></div>
+          <div><small>Créée: {{ game.created_at|fr_datetime }}</small></div>
+          <div><small>MAJ: {{ game.updated_at|fr_datetime }}</small></div>
         </div>
       </div>
     </div>
   </div>
+
+  {% if hands %}
+  <h4 class="mt-4">Progression des scores</h4>
+  <div class="card mb-4">
+    <div class="card-body">
+      <canvas id="scoreProgress" height="120"></canvas>
+    </div>
+  </div>
+  <script id="hands-data" type="application/json">{{ hands | tojson }}</script>
+  {% endif %}
 
   <h4>Manches</h4>
   {% if hands %}
@@ -54,6 +64,9 @@
           <th>Score A</th>
           <th>Score B</th>
           <th>Date</th>
+          {% if can_add_hand %}
+          <th class="text-end">Actions</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -72,7 +85,15 @@
           </td>
           <td>{{ h[6] }}</td>
           <td>{{ h[7] }}</td>
-          <td><small class="text-muted">{{ h[16] }}</small></td>
+          <td><small class="text-muted">{{ h[16]|fr_datetime }}</small></td>
+          {% if can_add_hand %}
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_hand', game_id=game.id, hand_id=h[0]) }}">Modifier</a>
+            <form method="post" action="{{ url_for('delete_hand', game_id=game.id, hand_id=h[0]) }}" class="d-inline" onsubmit="return confirm('Supprimer cette manche ?');">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Supprimer</button>
+            </form>
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -169,6 +190,62 @@
   </div>
   {% endif %}
   {% block scripts %}
+    {% if hands %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      (function () {
+        const dataEl = document.getElementById('hands-data');
+        if (!dataEl) return;
+        let rows = [];
+        try { rows = JSON.parse(dataEl.textContent || '[]'); } catch (e) { rows = []; }
+        if (!rows.length) return;
+        const labels = rows.map(h => h[1]);
+        const ptsA = rows.map(h => h[6]);
+        const ptsB = rows.map(h => h[7]);
+        const cumA = [], cumB = [];
+        let sa = 0, sb = 0;
+        for (let i = 0; i < labels.length; i++) {
+          sa += Number(ptsA[i] || 0);
+          sb += Number(ptsB[i] || 0);
+          cumA.push(sa);
+          cumB.push(sb);
+        }
+        const ctx = document.getElementById('scoreProgress');
+        if (!ctx) return;
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels.map(n => 'Manche ' + n),
+            datasets: [
+              {
+                label: 'Équipe A',
+                data: cumA,
+                borderColor: 'rgb(13, 110, 253)',
+                backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                tension: 0.2
+              },
+              {
+                label: 'Équipe B',
+                data: cumB,
+                borderColor: 'rgb(220, 53, 69)',
+                backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                tension: 0.2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: {
+              y: { beginAtZero: true, title: { display: true, text: 'Points cumulés' } },
+              x: { title: { display: true, text: 'Manche' } }
+            }
+          }
+        });
+      })();
+    </script>
+    {% endif %}
     <script src="{{ url_for('static', filename='js/game_detail.js') }}"></script>
   {% endblock %}
 {% endblock %}

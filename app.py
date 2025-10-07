@@ -1,62 +1,17 @@
 import os
-import sqlite3
-from contextlib import closing
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 import click
 
-def compute_score(hands_data):
-	taker = hands_data["taker_team"]
-	defender = "B" if taker == "A" else "A"
-	final_score = {}
+from db.core import get_db
+from db.schema import init_db
+from db import users as users_repo
+from db import games as games_repo
+from db import hands as hands_repo
 
-	if hands_data["contract"] == "Capot":
-		if hands_data[taker]["pre_score"] == 162:
-			final_score = {taker: 500, defender: 0}
-		else:
-			final_score = {taker: 0, defender: 160}
-	elif hands_data["contract"] == "Générale":
-		if hands_data["general"] and hands_data[taker]["pre_score"] == 162 and hands_data["general"]:
-			final_score = {taker: 750, defender: 0}
-		else:
-			final_score = {taker: 0, defender: 160}
-	else:
-		if hands_data[taker]["pre_score"] < 81:
-			final_score = {taker: 0, defender: 160}
-		else:
-			belote_pts = 10 if hands_data["trump"] == "Tout atout" else 20
-			temp_score = {"A": hands_data["A"]["pre_score"] + belote_pts * hands_data["A"]["belote"],
-					"B": hands_data["B"]["pre_score"] + belote_pts * hands_data["B"]["belote"]}
-			print(temp_score, hands_data)
-			if temp_score[taker] >= int(hands_data["contract"]):
-				final_score = {
-					taker: int(hands_data["contract"]) + hands_data[taker]["pre_score"],
-					defender: hands_data[defender]["pre_score"]
-				}
-			else:
-				final_score = {
-					taker: 0,
-					defender: 160 + temp_score[defender]
-				}
-
-		if hands_data[defender]["pre_score"] == 162:
-			final_score[defender] += 90
-		elif hands_data[taker]["pre_score"] == 162:
-			final_score[taker] += 90
-				
-	mul = 2 if hands_data["coinche"] else (4 if hands_data["surcoinche"] else 1)
-	if final_score[taker] == 0:
-		final_score[defender] *= mul
-	else:
-		final_score[taker] *= mul
-
-	belote_pts = 10 if hands_data["trump"] == "Tout atout" else 20
-	final_score["A"] += belote_pts * hands_data["A"]["belote"]
-	final_score["B"] += belote_pts * hands_data["B"]["belote"]
-
-	return final_score
+from services.scores import compute_score
 
 def create_app():
 	# Load environment variables from .env if present
@@ -91,6 +46,25 @@ def create_app():
 		if db is not None:
 			db.close()
 
+	# Register Jinja filter for French datetime formatting
+	def fr_datetime(value):
+		if not value:
+			return ''
+		try:
+			# Accept already formatted or ISO strings
+			if isinstance(value, str):
+				# Normalize common formats
+				val = value.replace('T', ' ')
+				dt = datetime.fromisoformat(val)
+			else:
+				dt = value
+			return dt.strftime('%d/%m/%Y %H:%M')
+		except Exception:
+			# Fallback: simple replace of T
+			return str(value).replace('T', ' ')
+
+	app.jinja_env.filters['fr_datetime'] = fr_datetime
+
 	# ----- Routes -----
 	@app.route('/')
 	def index():
@@ -104,19 +78,15 @@ def create_app():
 			if not username or not password:
 				flash('Identifiants invalides.', 'danger')
 				return render_template('login.html')
-			# Fetch user by username (case-insensitive)
-			with closing(g.db.cursor()) as cur:
-				cur.execute(
-					"SELECT id, username, password_hash, is_active FROM users WHERE username = ? COLLATE NOCASE LIMIT 1",
-					(username,),
-				)
-				row = cur.fetchone()
+
+			row = users_repo.find_user_by_username(g.db, username)
 			if row and row[3] and check_password_hash(row[2], password):
 				session.clear()
 				session['user_id'] = row[0]
 				session['user'] = row[1]
 				flash('Connexion réussie.', 'success')
 				return redirect(url_for('index'))
+
 			flash('Identifiants invalides.', 'danger')
 		return render_template('login.html')
 
@@ -134,86 +104,44 @@ def create_app():
 
 	@app.route('/games')
 	def games_list():
-		with closing(g.db.cursor()) as cur:
-			cur.execute(
-				"""
-				SELECT g.id,
-				       g.created_at,
-				       g.updated_at,
-				       g.state,
-				       g.points_team_a,
-				       g.points_team_b,
-				       g.target_points,
-				       (SELECT group_concat(u.username, ', ')
-				        FROM game_players gp JOIN users u ON u.id = gp.user_id
-				        WHERE gp.game_id = g.id AND gp.team = 'A') AS team_a,
-				       (SELECT group_concat(u.username, ', ')
-				        FROM game_players gp JOIN users u ON u.id = gp.user_id
-				        WHERE gp.game_id = g.id AND gp.team = 'B') AS team_b
-				FROM games g
-				ORDER BY g.created_at DESC
-				"""
-			)
-			games = [
-				{
-					'id': r[0],
-					'created_at': r[1],
-					'updated_at': r[2],
-					'state': r[3],
-					'score_a': r[4],
-					'score_b': r[5],
-					'target_points': r[6],
-					'team_a': r[7] or '-',
-					'team_b': r[8] or '-',
-				}
-				for r in cur.fetchall()
-			]
+		rows = games_repo.list_games(g.db)
+		games = [
+			{
+				'id': r[0],
+				'created_at': r[1],
+				'updated_at': r[2],
+				'state': r[3],
+				'score_a': r[4],
+				'score_b': r[5],
+				'target_points': r[6],
+				'team_a': r[7] or '-',
+				'team_b': r[8] or '-',
+			}
+			for r in rows
+		]
 		return render_template('games.html', games=games)
 
 	@app.route('/games/<int:game_id>', methods=['GET', 'POST'])
 	def game_detail(game_id: int):
 		# Load game, players, hands
-		with closing(g.db.cursor()) as cur:
-			cur.execute(
-				"SELECT id, created_at, updated_at, created_by, state, points_team_a, points_team_b, target_points FROM games WHERE id = ?",
-				(game_id,),
-			)
-			game_row = cur.fetchone()
-			if not game_row:
-				flash("Partie introuvable.", 'warning')
-				return redirect(url_for('games_list'))
-			game = {
-				'id': game_row[0],
-				'created_at': game_row[1],
-				'updated_at': game_row[2],
-				'created_by': game_row[3],
-				'state': game_row[4],
-				'score_a': game_row[5],
-				'score_b': game_row[6],
-				'target_points': game_row[7],
-			}
-			# Players
-			cur.execute(
-				"SELECT gp.user_id, u.username, gp.team, gp.position FROM game_players gp JOIN users u ON u.id = gp.user_id WHERE gp.game_id = ? ORDER BY gp.team, gp.position",
-				(game_id,),
-			)
-			players = cur.fetchall()
-			team_a = [p for p in players if p[2] == 'A']
-			team_b = [p for p in players if p[2] == 'B']
-			# Hands
-			cur.execute(
-				"""
-				SELECT h.id, h.number, h.taker_user_id, u.username, h.contract, h.trump,
-				       h.score_team_a, h.score_team_b, h.points_made_team_a, h.points_made_team_b,
-				       h.coinche, h.surcoinche, h.capot_team,
-				       h.belote_a, h.belote_b, h.general, h.created_at
-				FROM hands h LEFT JOIN users u ON u.id = h.taker_user_id
-				WHERE h.game_id = ?
-				ORDER BY h.number ASC
-				""",
-				(game_id,),
-			)
-			hands = cur.fetchall()
+		game_row = games_repo.load_game_basics(g.db, game_id)
+		if not game_row:
+			flash("Partie introuvable.", 'warning')
+			return redirect(url_for('games_list'))
+		game = {
+			'id': game_row[0],
+			'created_at': game_row[1],
+			'updated_at': game_row[2],
+			'created_by': game_row[3],
+			'state': game_row[4],
+			'score_a': game_row[5],
+			'score_b': game_row[6],
+			'target_points': game_row[7],
+		}
+		players = games_repo.load_players(g.db, game_id)
+		team_a = [p for p in players if p[2] == 'A']
+		team_b = [p for p in players if p[2] == 'B']
+		hands = hands_repo.list_hands(g.db, game_id)
 
 		# POST: add a hand if allowed
 		if request.method == 'POST':
@@ -224,11 +152,9 @@ def create_app():
 			if game['state'] != 'en_cours':
 				flash("La partie n'est pas en cours.", 'warning')
 				return redirect(url_for('game_detail', game_id=game_id))
-			with closing(g.db.cursor()) as cur:
-				cur.execute("SELECT 1 FROM game_players WHERE game_id = ? AND user_id = ?", (game_id, user_id))
-				if not cur.fetchone():
-					flash("Seuls les joueurs de la partie peuvent ajouter des manches.", 'danger')
-					return redirect(url_for('game_detail', game_id=game_id))
+			if not games_repo.is_participant(g.db, game_id, user_id):
+				flash("Seuls les joueurs de la partie peuvent ajouter des manches.", 'danger')
+				return redirect(url_for('game_detail', game_id=game_id))
 			# Parse form
 			try:
 				taker_user_id = int(request.form.get('taker_user_id') or 0) or None
@@ -279,12 +205,9 @@ def create_app():
 					flash('Avec un atout couleur, une seule belote au total (A+B) est autorisée.', 'warning')
 					return redirect(url_for('game_detail', game_id=game_id))
 			# Validate taker belongs to game if provided
-			if taker_user_id:
-				with closing(g.db.cursor()) as cur:
-					cur.execute("SELECT 1 FROM game_players WHERE game_id = ? AND user_id = ?", (game_id, taker_user_id))
-					if not cur.fetchone():
-						flash("Le preneur doit être un joueur de la partie.", 'danger')
-						return redirect(url_for('game_detail', game_id=game_id))
+			if taker_user_id and not games_repo.is_participant(g.db, game_id, taker_user_id):
+				flash("Le preneur doit être un joueur de la partie.", 'danger')
+				return redirect(url_for('game_detail', game_id=game_id))
 			taker_team = None
 			if taker_user_id:
 				# players: list of tuples (user_id, username, team, position)
@@ -292,6 +215,14 @@ def create_app():
 					if p[0] == taker_user_id:
 						taker_team = p[2]
 						break
+			# Require a contract
+			if not contract:
+				flash('Veuillez choisir un contrat.', 'warning')
+				return redirect(url_for('game_detail', game_id=game_id))
+			# Require a taker to compute score
+			if not taker_team:
+				flash('Veuillez choisir un preneur.', 'warning')
+				return redirect(url_for('game_detail', game_id=game_id))
 			computed_scores = compute_score({
 				"A": {
 					"pre_score": pre_score_a,
@@ -319,34 +250,15 @@ def create_app():
 				capot_team = 'B'
 
 			# Next hand number
-			with closing(g.db.cursor()) as cur:
-				cur.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM hands WHERE game_id = ?", (game_id,))
-				number = cur.fetchone()[0]
-				now = datetime.utcnow().isoformat(timespec='seconds')
-				cur.execute(
-					"""
-					INSERT INTO hands (game_id, number, taker_user_id, contract, trump,
-					  score_team_a, score_team_b, points_made_team_a, points_made_team_b,
-					  coinche, surcoinche, capot_team, belote_a, belote_b, general, created_at)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					""",
-					(game_id, number, taker_user_id, contract, trump,
-					 score_a, score_b, pre_score_a, pre_score_b,
-					 coinche, surcoinche, capot_team, belote_a, belote_b, general, now),
-				)
-				# Recompute totals and update game
-				cur.execute("SELECT COALESCE(SUM(score_team_a),0), COALESCE(SUM(score_team_b),0) FROM hands WHERE game_id = ?", (game_id,))
-				totals = cur.fetchone()
-				points_a, points_b = int(totals[0]), int(totals[1])
-				state = 'en_cours'
-				if points_a >= game['target_points'] or points_b >= game['target_points']:
-					state = 'terminee'
-				cur.execute(
-					"UPDATE games SET points_team_a = ?, points_team_b = ?, updated_at = ?, state = ? WHERE id = ?",
-					(points_a, points_b, now, state, game_id),
-				)
-				g.db.commit()
-				flash('Manche ajoutée.', 'success')
+			number = hands_repo.next_hand_number(g.db, game_id)
+			now = datetime.utcnow().isoformat(timespec='seconds')
+			hands_repo.insert_hand(
+				g.db, game_id, number, taker_user_id, contract, trump,
+				score_a, score_b, pre_score_a, pre_score_b,
+				coinche, surcoinche, capot_team, belote_a, belote_b, general, now
+			)
+			games_repo.recompute_totals_and_update_game(g.db, game_id, game['target_points'], now)
+			flash('Manche ajoutée.', 'success')
 			return redirect(url_for('game_detail', game_id=game_id))
 
 		# GET render
@@ -360,11 +272,145 @@ def create_app():
 			players=players,
 		)
 
+	@app.route('/games/<int:game_id>/hands/<int:hand_id>/delete', methods=['POST'])
+	def delete_hand(game_id: int, hand_id: int):
+		# Must be logged in and a participant
+		if not session.get('user_id'):
+			flash('Veuillez vous connecter pour continuer.', 'warning')
+			return redirect(url_for('login'))
+		user_id = session.get('user_id')
+		if not games_repo.is_participant(g.db, game_id, user_id):
+			flash("Action non autorisée.", 'danger')
+			return redirect(url_for('game_detail', game_id=game_id))
+		# Delete the hand then recompute totals
+		h = hands_repo.get_hand(g.db, hand_id)
+		if not h or h[1] != game_id:
+			flash("Manche introuvable.", 'warning')
+			return redirect(url_for('game_detail', game_id=game_id))
+		hands_repo.delete_hand(g.db, hand_id)
+		now = datetime.utcnow().isoformat(timespec='seconds')
+		games_repo.recompute_totals_and_update_game(g.db, game_id, games_repo.load_game_basics(g.db, game_id)[7], now)
+		flash('Manche supprimée.', 'info')
+		return redirect(url_for('game_detail', game_id=game_id))
+
+	@app.route('/games/<int:game_id>/hands/<int:hand_id>/edit', methods=['GET', 'POST'])
+	def edit_hand(game_id: int, hand_id: int):
+		# Must be logged in and a participant
+		if not session.get('user_id'):
+			flash('Veuillez vous connecter pour continuer.', 'warning')
+			return redirect(url_for('login'))
+		user_id = session.get('user_id')
+		if not games_repo.is_participant(g.db, game_id, user_id):
+			flash("Action non autorisée.", 'danger')
+			return redirect(url_for('game_detail', game_id=game_id))
+		# Load game and hand
+		game_row = games_repo.load_game_basics(g.db, game_id)
+		if not game_row:
+			flash('Partie introuvable.', 'warning')
+			return redirect(url_for('games_list'))
+		hand = hands_repo.get_hand(g.db, hand_id)
+		if not hand or hand[1] != game_id:
+			flash('Manche introuvable.', 'warning')
+			return redirect(url_for('game_detail', game_id=game_id))
+		players = games_repo.load_players(g.db, game_id)
+		if request.method == 'POST':
+			# Parse and validate like creation
+			try:
+				taker_user_id = int(request.form.get('taker_user_id') or 0) or None
+				pre_score_a = int(request.form.get('score_team_a') or 0)
+				pre_score_b = int(request.form.get('score_team_b') or 0)
+			except ValueError:
+				flash('Scores invalides.', 'danger')
+				return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			contract_raw = (request.form.get('contract') or '').strip()
+			trump = (request.form.get('trump') or '').strip() or None
+			coinche = 1 if (request.form.get('coinche') == 'on') else 0
+			surcoinche = 1 if (request.form.get('surcoinche') == 'on') else 0
+			try:
+				belote_a = int(request.form.get('belote_a') or 0)
+				belote_b = int(request.form.get('belote_b') or 0)
+			except ValueError:
+				flash('Belotes invalides.', 'danger')
+				return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			general = 1 if (request.form.get('general') == 'on') else 0
+			# Contract validation
+			special_contracts = {'Capot', 'Générale'}
+			contract = None
+			if contract_raw:
+				if contract_raw in special_contracts:
+					contract = contract_raw
+				else:
+					try:
+						c_val = int(contract_raw)
+						if c_val < 80 or c_val > 180 or (c_val % 10 != 0):
+							raise ValueError()
+						contract = str(c_val)
+					except ValueError:
+						flash('Contrat invalide: choisissez un nombre entre 80 et 180 (pas de 10) ou un contrat spécial.', 'danger')
+						return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			# Belote rules per trump (same as creation)
+			trump_norm = (trump or '').strip().lower()
+			if trump_norm == 'sans atout':
+				if belote_a > 0 or belote_b > 0:
+					flash('En Sans atout, aucune belote n\'est autorisée.', 'warning')
+					return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			elif trump_norm == 'tout atout':
+				if (belote_a + belote_b) > 4:
+					flash('En Tout atout, il ne peut y avoir que 4 belotes au total (cumulé A+B).', 'warning')
+					return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			else:
+				if (belote_a + belote_b) > 1:
+					flash('Avec un atout couleur, une seule belote au total (A+B) est autorisée.', 'warning')
+					return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			# Taker team
+			taker_team = None
+			if taker_user_id:
+				for p in players:
+					if p[0] == taker_user_id:
+						taker_team = p[2]
+						break
+			if not contract:
+				flash('Veuillez choisir un contrat.', 'warning')
+				return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			if not taker_team:
+				flash('Veuillez choisir un preneur.', 'warning')
+				return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
+			computed = compute_score({
+				"A": {"pre_score": pre_score_a, "belote": belote_a},
+				"B": {"pre_score": pre_score_b, "belote": belote_b},
+				"coinche": coinche,
+				"surcoinche": surcoinche,
+				"general": general,
+				"taker_team": taker_team,
+				"contract": contract,
+				"trump": trump,
+			})
+			score_a = int(computed.get("A", 0))
+			score_b = int(computed.get("B", 0))
+			capot_team = None
+			if pre_score_a == 162 and pre_score_b == 0:
+				capot_team = 'A'
+			elif pre_score_b == 162 and pre_score_a == 0:
+				capot_team = 'B'
+			hands_repo.update_hand(
+				g.db, hand_id, taker_user_id, contract, trump,
+				score_a, score_b, pre_score_a, pre_score_b,
+				coinche, surcoinche, capot_team, belote_a, belote_b, general
+			)
+			now = datetime.utcnow().isoformat(timespec='seconds')
+			games_repo.recompute_totals_and_update_game(g.db, game_id, game_row[7], now)
+			flash('Manche modifiée.', 'success')
+			return redirect(url_for('game_detail', game_id=game_id))
+		# GET: render edit form
+		players = games_repo.load_players(g.db, game_id)
+		return render_template('edit_hand.html', game_id=game_id, hand=hand, players=players)
+
 	@app.route('/games/new', methods=['GET', 'POST'])
 	def new_game():
 		if not login_required():
 			return redirect(url_for('login'))
 		if request.method == 'POST':
+			# Read selected players
 			try:
 				p_a1 = int(request.form.get('team_a_player1') or 0)
 				p_a2 = int(request.form.get('team_a_player2') or 0)
@@ -374,10 +420,11 @@ def create_app():
 				flash('Sélection de joueurs invalide.', 'danger')
 				return redirect(url_for('new_game'))
 			players = [p_a1, p_a2, p_b1, p_b2]
+			# Validate players: 4 distinct and > 0
 			if any(p <= 0 for p in players) or len(set(players)) != 4:
 				flash('Veuillez sélectionner 4 joueurs distincts.', 'danger')
 				return redirect(url_for('new_game'))
-			# target points
+			# Target points
 			try:
 				target_points = int(request.form.get('target_points') or 1000)
 			except ValueError:
@@ -387,27 +434,11 @@ def create_app():
 				flash('Session expirée, reconnectez-vous.', 'warning')
 				return redirect(url_for('login'))
 			now = datetime.utcnow().isoformat(timespec='seconds')
-			with closing(g.db.cursor()) as cur:
-				cur.execute(
-					"INSERT INTO games (created_at, updated_at, created_by, state, points_team_a, points_team_b, target_points) VALUES (?, ?, ?, 'en_cours', 0, 0, ?)",
-					(now, now, created_by, target_points),
-				)
-				game_id = cur.lastrowid
-				cur.executemany(
-					"INSERT INTO game_players (game_id, user_id, team, position) VALUES (?, ?, ?, ?)",
-					[
-						(game_id, p_a1, 'A', 1),
-						(game_id, p_a2, 'A', 2),
-						(game_id, p_b1, 'B', 1),
-						(game_id, p_b2, 'B', 2),
-					],
-				)
-				g.db.commit()
+			games_repo.create_game(g.db, created_by, target_points, players, now)
 			flash('Partie créée.', 'success')
 			return redirect(url_for('games_list'))
-		with closing(g.db.cursor()) as cur:
-			cur.execute("SELECT id, username FROM users WHERE is_active = 1 ORDER BY username")
-			users = cur.fetchall()
+		# GET
+		users = users_repo.get_active_users(g.db)
 		if len(users) < 4:
 			flash("Vous devez avoir au moins 4 utilisateurs actifs pour créer une partie (utilisez la CLI create-user).", 'warning')
 		return render_template('new_game.html', users=users)
@@ -418,198 +449,25 @@ def create_app():
 			return redirect(url_for('login'))
 		user_id = session.get('user_id')
 		username = session.get('user')
-		with closing(g.db.cursor()) as cur:
-			cur.execute(
-				"""
-				SELECT g.id,
-				       g.created_at,
-				       g.updated_at,
-				       g.points_team_a,
-				       g.points_team_b,
-				       g.target_points,
-				       (SELECT group_concat(u.username, ', ')
-				        FROM game_players gp2 JOIN users u ON u.id = gp2.user_id
-				        WHERE gp2.game_id = g.id AND gp2.team = 'A') AS team_a,
-				       (SELECT group_concat(u.username, ', ')
-				        FROM game_players gp2 JOIN users u ON u.id = gp2.user_id
-				        WHERE gp2.game_id = g.id AND gp2.team = 'B') AS team_b
-				FROM games g
-				WHERE g.state = 'en_cours'
-				  AND EXISTS (SELECT 1 FROM game_players gp WHERE gp.game_id = g.id AND gp.user_id = ?)
-				ORDER BY g.updated_at DESC
-				""",
-				(user_id,),
-			)
-			ongoing = [
-				{
-					'id': r[0],
-					'created_at': r[1],
-					'updated_at': r[2],
-					'score_a': r[3],
-					'score_b': r[4],
-					'target_points': r[5],
-					'team_a': r[6] or '-',
-					'team_b': r[7] or '-',
-				}
-				for r in cur.fetchall()
-			]
+		rows = games_repo.list_ongoing_games_for_user(g.db, user_id)
+		ongoing = [
+			{
+				'id': r[0],
+				'created_at': r[1],
+				'updated_at': r[2],
+				'score_a': r[3],
+				'score_b': r[4],
+				'target_points': r[5],
+				'team_a': r[6] or '-',
+				'team_b': r[7] or '-',
+			}
+			for r in rows
+		]
 		return render_template('profile.html', username=username, ongoing=ongoing)
 
-	# CLI command to (re)initialize the database
-	@app.cli.command('init-db')
-	def init_db_command():
-		init_db(app)
-		print('Base de données initialisée.')
-
-	# CLI to create a user
-	@app.cli.command('create-user')
-	@click.option('--username', prompt=True, help='Nom d\'utilisateur (unique, insensible à la casse)')
-	@click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='Mot de passe')
-	def create_user_command(username: str, password: str):
-		username = username.strip()
-		if not username or not password or len(password) < 8:
-			print('Erreur: nom d\'utilisateur et mot de passe (>= 8 caractères) requis.')
-			return
-		password_hash = generate_password_hash(password, method='pbkdf2:sha256')
-		with closing(get_db(app)) as db:
-			with closing(db.cursor()) as cur:
-				# Check if exists (case-insensitive)
-				cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
-				if cur.fetchone():
-					print('Erreur: cet utilisateur existe déjà.')
-					return
-				cur.execute(
-					"INSERT INTO users (username, password_hash, created_at, is_active) VALUES (?, ?, ?, 1)",
-					(username, password_hash, datetime.utcnow().isoformat(timespec='seconds')),
-				)
-				db.commit()
-		print(f"Utilisateur '{username}' créé avec succès.")
-
 	return app
-
-
-def get_db(app: Flask):
-	db = getattr(g, '_database', None)
-	if db is None:
-		# Ensure parent directory exists
-		db_path = app.config['DATABASE']
-		db_dir = os.path.dirname(db_path)
-		if db_dir and not os.path.exists(db_dir):
-			os.makedirs(db_dir, exist_ok=True)
-		need_init = not os.path.exists(db_path)
-		db = g._database = sqlite3.connect(db_path)
-		try:
-			db.execute('PRAGMA foreign_keys = ON')
-		except Exception:
-			pass
-		if need_init:
-			init_db(app, db)
-	return db
-
-
-def init_db(app: Flask, db: sqlite3.Connection | None = None):
-	close_after = False
-	if db is None:
-		# Ensure parent directory exists when creating DB directly
-		db_path = app.config['DATABASE']
-		db_dir = os.path.dirname(db_path)
-		if db_dir and not os.path.exists(db_dir):
-			os.makedirs(db_dir, exist_ok=True)
-		db = sqlite3.connect(db_path)
-		try:
-			db.execute('PRAGMA foreign_keys = ON')
-		except Exception:
-			pass
-		close_after = True
-	with closing(db.cursor()) as cur:
-		# Users table (create first so FKs can reference it)
-		cur.execute(
-			'''CREATE TABLE IF NOT EXISTS users (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-				password_hash TEXT NOT NULL,
-				created_at TEXT NOT NULL,
-				is_active INTEGER NOT NULL DEFAULT 1
-			)'''
-		)
-
-
-		# New normalized tables
-		cur.execute(
-			'''CREATE TABLE IF NOT EXISTS games (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				created_at TEXT NOT NULL,
-				updated_at TEXT NOT NULL,
-				created_by INTEGER NOT NULL,
-				state TEXT NOT NULL CHECK(state IN ('en_cours','terminee','annulee')) DEFAULT 'en_cours',
-				points_team_a INTEGER NOT NULL DEFAULT 0,
-				points_team_b INTEGER NOT NULL DEFAULT 0,
-				target_points INTEGER NOT NULL DEFAULT 1000,
-				FOREIGN KEY(created_by) REFERENCES users(id)
-			)'''
-		)
-		cur.execute(
-			'''CREATE TABLE IF NOT EXISTS game_players (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				game_id INTEGER NOT NULL,
-				user_id INTEGER NOT NULL,
-				team TEXT NOT NULL CHECK(team IN ('A','B')),
-				position INTEGER,
-				FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
-				FOREIGN KEY(user_id) REFERENCES users(id)
-			)'''
-		)
-		cur.execute('CREATE INDEX IF NOT EXISTS idx_game_players_game ON game_players(game_id)')
-		cur.execute('CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id)')
-		cur.execute(
-			'''CREATE TABLE IF NOT EXISTS hands (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				game_id INTEGER NOT NULL,
-				number INTEGER NOT NULL,
-				taker_user_id INTEGER,
-				contract TEXT,
-				trump TEXT,
-				score_team_a INTEGER NOT NULL DEFAULT 0,
-				score_team_b INTEGER NOT NULL DEFAULT 0,
-				points_made_team_a INTEGER NOT NULL DEFAULT 0,
-				points_made_team_b INTEGER NOT NULL DEFAULT 0,
-				coinche INTEGER NOT NULL DEFAULT 0,
-				surcoinche INTEGER NOT NULL DEFAULT 0,
-				capot_team TEXT,
-				belote_a INTEGER NOT NULL DEFAULT 0,
-				belote_b INTEGER NOT NULL DEFAULT 0,
-				general INTEGER NOT NULL DEFAULT 0,
-				created_at TEXT NOT NULL,
-				FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
-				FOREIGN KEY(taker_user_id) REFERENCES users(id)
-			)'''
-		)
-		# Ensure target_points column exists if DB was created before this field
-		cur.execute("PRAGMA table_info('games')")
-		cols = [c[1] for c in cur.fetchall()]
-		if 'target_points' not in cols:
-			cur.execute("ALTER TABLE games ADD COLUMN target_points INTEGER NOT NULL DEFAULT 1000")
-		# Ensure new hand columns exist if DB was created before these fields
-		cur.execute("PRAGMA table_info('hands')")
-		h_cols = [c[1] for c in cur.fetchall()]
-		if 'belote_a' not in h_cols:
-			cur.execute("ALTER TABLE hands ADD COLUMN belote_a INTEGER NOT NULL DEFAULT 0")
-		if 'belote_b' not in h_cols:
-			cur.execute("ALTER TABLE hands ADD COLUMN belote_b INTEGER NOT NULL DEFAULT 0")
-		if 'general' not in h_cols:
-			cur.execute("ALTER TABLE hands ADD COLUMN general INTEGER NOT NULL DEFAULT 0")
-		if 'points_made_team_a' not in h_cols:
-			cur.execute("ALTER TABLE hands ADD COLUMN points_made_team_a INTEGER NOT NULL DEFAULT 0")
-		if 'points_made_team_b' not in h_cols:
-			cur.execute("ALTER TABLE hands ADD COLUMN points_made_team_b INTEGER NOT NULL DEFAULT 0")
-		if 'capot_team' not in h_cols:
-			cur.execute("ALTER TABLE hands ADD COLUMN capot_team TEXT")
-		db.commit()
-	if close_after:
-		db.close()
 
 
 if __name__ == '__main__':
 	app = create_app()
 	app.run(host=app.config.get('HOST', '0.0.0.0'), port=app.config.get('PORT', 5000), debug=app.config.get('DEBUG', True))
-

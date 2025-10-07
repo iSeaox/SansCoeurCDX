@@ -23,8 +23,8 @@
         <tbody>
           {% for g in ongoing %}
             <tr>
-              <td><small class="text-muted">{{ g.created_at }}</small></td>
-              <td><small class="text-muted">{{ g.updated_at }}</small></td>
+              <td><small class="text-muted">{{ g.created_at|fr_datetime }}</small></td>
+              <td><small class="text-muted">{{ g.updated_at|fr_datetime }}</small></td>
               <td>{{ g.team_a }}</td>
               <td>{{ g.team_b }}</td>
               <td><strong>{{ g.score_a }}</strong> - <strong>{{ g.score_b }}</strong></td>

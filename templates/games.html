@@ -24,7 +24,7 @@
         <tbody>
           {% for g in games %}
             <tr>
-              <td><a href="{{ url_for('game_detail', game_id=g.id) }}"><small class="text-muted">{{ g.created_at }}</small></a></td>
+              <td><a href="{{ url_for('game_detail', game_id=g.id) }}"><small class="text-muted">{{ g.created_at|fr_datetime }}</small></a></td>
               <td>{{ g.team_a }}</td>
               <td>{{ g.team_b }}</td>
               <td><strong>{{ g.score_a }}</strong> - <strong>{{ g.score_b }}</strong></td>

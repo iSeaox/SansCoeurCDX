@@ -3,7 +3,7 @@ import sqlite3
 from contextlib import closing
 
 
-def init_db(app, db: sqlite3.Connection | None = None):
+def init_db(app, db):
     close_after = False
     if db is None:
         # Ensure parent directory exists when creating DB directly

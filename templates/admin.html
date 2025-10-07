@@ -3,7 +3,10 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Administration</h2>
-    <span class="badge text-bg-primary">{{ users|length }} utilisateurs</span>
+    <div>
+      <span class="badge text-bg-primary">{{ users|length }} utilisateurs</span>
+      <span class="badge text-bg-warning">{{ users|selectattr('2', 'equalto', 0)|list|length }} en attente</span>
+    </div>
   </div>
 
   {% if users %}
@@ -33,7 +36,7 @@
                 {% if u[2] %}
                   <span class="badge text-bg-success">Actif</span>
                 {% else %}
-                  <span class="badge text-bg-secondary">Inactif</span>
+                  <span class="badge text-bg-warning">En attente d'activation</span>
                 {% endif %}
               </td>
               <td>
@@ -54,8 +57,8 @@
                       </button>
                     {% else %}
                       <button type="submit" class="btn btn-sm btn-outline-success"
-                              onclick="return confirm('Réactiver cet utilisateur ?');">
-                        Réactiver
+                              onclick="return confirm('Activer cet utilisateur ?');">
+                        Activer
                       </button>
                     {% endif %}
                   </form>
@@ -79,8 +82,9 @@
         <ul class="mb-0">
           <li>Seuls les administrateurs peuvent accéder à cette page</li>
           <li>Vous ne pouvez pas modifier votre propre statut</li>
+          <li>Les nouveaux comptes créés via inscription sont inactifs par défaut</li>
           <li>Les utilisateurs inactifs ne peuvent pas se connecter</li>
-          <li>Utilisez la CLI <code>create-user</code> pour créer de nouveaux utilisateurs</li>
+          <li>Utilisez la CLI <code>create-user</code> pour créer des utilisateurs directement actifs</li>
         </ul>
       </div>
     </div>

@@ -95,6 +95,46 @@ def create_app():
 			flash('Identifiants invalides.', 'danger')
 		return render_template('login.html')
 
+	@app.route('/register', methods=['GET', 'POST'])
+	def register():
+		if request.method == 'POST':
+			username = request.form.get('username', '').strip()
+			password = request.form.get('password', '').strip()
+			password_confirm = request.form.get('password_confirm', '').strip()
+			
+			# Validation
+			if not username or not password:
+				flash('Nom d\'utilisateur et mot de passe requis.', 'danger')
+				return render_template('register.html')
+			
+			if len(password) < 8:
+				flash('Le mot de passe doit contenir au moins 8 caractères.', 'danger')
+				return render_template('register.html')
+			
+			if password != password_confirm:
+				flash('Les mots de passe ne correspondent pas.', 'danger')
+				return render_template('register.html')
+			
+			# Vérifier si l'utilisateur existe déjà
+			existing_user = users_repo.find_user_by_username(g.db, username)
+			if existing_user:
+				flash('Ce nom d\'utilisateur est déjà pris.', 'danger')
+				return render_template('register.html')
+			
+			# Créer l'utilisateur inactif
+			password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+			now = datetime.utcnow().isoformat(timespec='seconds')
+			user_id = users_repo.create_inactive_user(g.db, username, password_hash, now)
+			
+			if user_id:
+				flash('Compte créé avec succès ! Votre compte doit être activé par un administrateur avant de pouvoir vous connecter.', 'info')
+				return redirect(url_for('login'))
+			else:
+				flash('Erreur lors de la création du compte.', 'danger')
+				return render_template('register.html')
+		
+		return render_template('register.html')
+
 	@app.route('/logout')
 	def logout():
 		session.clear()

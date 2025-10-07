@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Inscription{% endblock %}
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title text-center mb-4">Créer un compte</h3>
+          <form method="post">
+            <div class="mb-3">
+              <label for="username" class="form-label">Nom d'utilisateur</label>
+              <input type="text" class="form-control" id="username" name="username" 
+                     value="{{ request.form.get('username', '') }}" required autofocus>
+              <div class="form-text">Ce nom sera visible par les autres joueurs</div>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Mot de passe</label>
+              <input type="password" class="form-control" id="password" name="password" required>
+              <div class="form-text">Minimum 8 caractères</div>
+            </div>
+            <div class="mb-3">
+              <label for="password_confirm" class="form-label">Confirmer le mot de passe</label>
+              <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+            </div>
+            <div class="mb-3">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Information importante :</strong> Votre compte sera créé mais restera inactif jusqu'à validation par un administrateur. 
+                Vous recevrez une confirmation une fois votre compte activé.
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Créer mon compte</button>
+          </form>
+          <div class="text-center mt-3">
+            <p class="mb-0">Vous avez déjà un compte ? <a href="{{ url_for('login') }}">Se connecter</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Validation côté client pour confirmer les mots de passe
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const password = document.getElementById('password').value;
+      const passwordConfirm = document.getElementById('password_confirm').value;
+      
+      if (password !== passwordConfirm) {
+        e.preventDefault();
+        alert('Les mots de passe ne correspondent pas.');
+        return false;
+      }
+      
+      if (password.length < 8) {
+        e.preventDefault();
+        alert('Le mot de passe doit contenir au moins 8 caractères.');
+        return false;
+      }
+    });
+  </script>
+{% endblock %}

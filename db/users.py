@@ -42,14 +42,15 @@ def create_user_with_admin(db, username: str, password_hash: str, created_at: st
         return cur.lastrowid
 
 
-def create_user_with_admin(db, username: str, password_hash: str, created_at: str, is_admin: bool = False):
+def create_inactive_user(db, username: str, password_hash: str, created_at: str):
+    """Create an inactive user (for self-registration)"""
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
             return None
         cur.execute(
-            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin) VALUES (?, ?, ?, 1, ?)",
-            (username, password_hash, created_at, 1 if is_admin else 0),
+            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin) VALUES (?, ?, ?, 0, 0)",
+            (username, password_hash, created_at),
         )
         db.commit()
         return cur.lastrowid

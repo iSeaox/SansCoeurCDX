@@ -1,16 +1,152 @@
 {% extends 'base.html' %}
 {% block title %}Accueil • Coinche{% endblock %}
 {% block content %}
+  <!-- Section d'en-tête -->
   <div class="text-center py-5">
-    <h1 class="display-5">Coinche Tracker</h1>
-    <p class="lead">Enregistrez vos parties de coinche facilement.</p>
-    <div class="d-flex gap-2 justify-content-center mt-3">
-      <a href="{{ url_for('games_list') }}" class="btn btn-primary">Voir les parties</a>
+    <h1 class="display-4 fw-bold text-primary">Coinche Tracker</h1>
+    <p class="lead text-muted mb-4">Enregistrez et suivez vos parties de coinche facilement</p>
+    <div class="d-flex gap-3 justify-content-center">
+      <a href="{{ url_for('games_list') }}" class="btn btn-primary btn-lg">
+        <i class="fas fa-list me-2"></i>Voir les parties
+      </a>
       {% if session.get('user') %}
-        <a href="{{ url_for('new_game') }}" class="btn btn-success">Nouvelle partie</a>
+        <a href="{{ url_for('new_game') }}" class="btn btn-success btn-lg">
+          <i class="fas fa-plus me-2"></i>Nouvelle partie
+        </a>
       {% else %}
-        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Se connecter</a>
+        <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+          <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+        </a>
       {% endif %}
     </div>
   </div>
+
+  <!-- Section du graphique d'activité -->
+  <div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-light border-0 py-3">
+          <h3 class="card-title mb-0 text-center">
+            <i class="fas fa-chart-area me-2 text-primary"></i>
+            Activité récente
+          </h3>
+        </div>
+        <div class="card-body p-4">
+          <div id="day_heatmap" class="heatmap-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section informations rapides (optionnelle pour l'avenir) -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="mb-3">
+            <i class="fas fa-trophy text-warning" style="font-size: 2rem;"></i>
+          </div>
+          <h5 class="card-title">Vos statistiques</h5>
+          <p class="card-text text-muted">Consultez vos performances et votre progression</p>
+          {% if session.get('user') %}
+            <a href="{{ url_for('profile') }}" class="btn btn-outline-primary">Voir le profil</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="mb-3">
+            <i class="fas fa-users text-info" style="font-size: 2rem;"></i>
+          </div>
+          <h5 class="card-title">Jouer entre amis</h5>
+          <p class="card-text text-muted">Créez des parties et invitez vos partenaires</p>
+          {% if session.get('user') %}
+            <a href="{{ url_for('new_game') }}" class="btn btn-outline-primary">Créer une partie</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="mb-3">
+            <i class="fas fa-history text-success" style="font-size: 2rem;"></i>
+          </div>
+          <h5 class="card-title">Historique</h5>
+          <p class="card-text text-muted">Retrouvez toutes vos parties précédentes</p>
+          <a href="{{ url_for('games_list') }}" class="btn btn-outline-primary">Voir l'historique</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}  {# Pour inclure les scripts de base.html comme Bootstrap #}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <script src="https://cdn.plot.ly/plotly-3.1.0.min.js" charset="utf-8"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const heatmapData = {{ heatmap_data|tojson }};
+
+      const data = [{
+        z: heatmapData.z,
+        x: heatmapData.x,
+        y: heatmapData.y,
+        text: heatmapData.text,
+        type: 'heatmap',
+        hoverinfo: 'text',
+        colorscale: [
+          [0.0, '#fafafa'],
+          [0.2, '#fff4cc'],
+          [0.5, '#ffb347'],
+          [0.8, '#ff704d'],
+          [1.0, '#e63946']
+        ],
+        showscale: false
+      }];
+
+      const layout = {
+        title: {
+          text: heatmapData.title,
+          font: { size: 16, color: '#495057' }
+        },
+        margin: { t: 60, l: 20, r: 20, b: 40 },
+        height: 300,
+        xaxis: {
+          title: '',
+          ticks: '',
+          showgrid: false,
+          showline: false,
+          zeroline: false
+        },
+        yaxis: {
+          title: '',
+          ticks: '',
+          showticklabels: false,
+          showgrid: false,
+          showline: false,
+          zeroline: false,
+          autorange: 'reversed'
+        },
+        plot_bgcolor: '#ffffff',
+        paper_bgcolor: '#ffffff'
+      };
+
+      const config = {
+        responsive: true,
+        displayModeBar: false
+      };
+
+      Plotly.newPlot('day_heatmap', data, layout, config);
+      
+      // Redimensionner le graphique quand la fenêtre change de taille
+      window.addEventListener('resize', function() {
+        Plotly.Plots.resize('day_heatmap');
+      });
+    });
+  </script>
 {% endblock %}

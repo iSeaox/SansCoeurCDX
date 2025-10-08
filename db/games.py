@@ -134,3 +134,32 @@ def delete_game(db, game_id: int):
     except Exception:
         db.rollback()
         return False
+
+
+def get_games_count_by_day(db, year: int, month: int):
+    """Get the count of games created by day for a specific month/year
+    
+    Returns a dictionary with day numbers as keys and game counts as values
+    """
+    with closing(db.cursor()) as cur:
+        # Format the date pattern for the specific month/year
+        # Using YYYY-MM format to match ISO dates in created_at
+        date_pattern = f"{year:04d}-{month:02d}-%"
+        
+        cur.execute(
+            """
+            SELECT 
+                CAST(SUBSTR(created_at, 9, 2) AS INTEGER) as day,
+                COUNT(*) as game_count
+            FROM games 
+            WHERE created_at LIKE ?
+            GROUP BY SUBSTR(created_at, 9, 2)
+            ORDER BY day
+            """,
+            (date_pattern,)
+        )
+        
+        results = cur.fetchall()
+        
+        # Convert to dictionary for easy lookup
+        return {day: count for day, count in results}

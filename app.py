@@ -12,6 +12,7 @@ from db import games as games_repo
 from db import hands as hands_repo
 
 from services.scores import compute_score
+from services.get_day_heatmap import get_day_heatmap
 
 def create_app():
 	# Load environment variables from .env if present
@@ -68,7 +69,7 @@ def create_app():
 	# ----- Routes -----
 	@app.route('/')
 	def index():
-		return render_template('index.html')
+		return render_template('index.html', heatmap_data=get_day_heatmap(g.db))
 
 	@app.route('/login', methods=['GET', 'POST'])
 	def login():

@@ -53,3 +53,44 @@ body {
     font-size: 2rem !important;
   }
 }
+
+/* Styles pour les équipes dans les formulaires */
+.team-a-score {
+  border: 2px solid #0d6efd !important;
+  border-radius: 8px;
+  background-color: rgba(13, 110, 253, 0.05);
+}
+
+.team-a-score .form-label {
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.team-a-score .form-control {
+  border-color: #0d6efd;
+}
+
+.team-a-score .form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.team-b-score {
+  border: 2px solid #dc3545 !important;
+  border-radius: 8px;
+  background-color: rgba(220, 53, 69, 0.05);
+}
+
+.team-b-score .form-label {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.team-b-score .form-control {
+  border-color: #dc3545;
+}
+
+.team-b-score .form-control:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}

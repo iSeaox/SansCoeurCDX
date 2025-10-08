@@ -152,20 +152,20 @@
             <option value="Tout atout">Tout atout</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Score équipe A</label>
+        <div class="col-md-3 team-a-score p-3">
+          <label class="form-label">Score {% for p in team_a %}{{ p[1] }}{% if not loop.last %}, {% endif %}{% endfor %}</label>
           <input type="number" class="form-control" name="score_team_a" value="0" min="0" max="162">
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Score équipe B</label>
+        <div class="col-md-3 team-b-score p-3">
+          <label class="form-label">Score {% for p in team_b %}{{ p[1] }}{% if not loop.last %}, {% endif %}{% endfor %}</label>
           <input type="number" class="form-control" name="score_team_b" value="0" min="0" max="162">
         </div>
         <div class="col-md-3">
-          <label class="form-label">Belotes équipe A</label>
+          <label class="form-label">Belotes {% for p in team_a %}{{ p[1] }}{% if not loop.last %}, {% endif %}{% endfor %}</label>
           <input type="number" class="form-control" name="belote_a" value="0" min="0">
         </div>
         <div class="col-md-3">
-          <label class="form-label">Belotes équipe B</label>
+          <label class="form-label">Belotes {% for p in team_b %}{{ p[1] }}{% if not loop.last %}, {% endif %}{% endfor %}</label>
           <input type="number" class="form-control" name="belote_b" value="0" min="0">
         </div>
         <div class="col-md-6 d-flex align-items-end gap-3">

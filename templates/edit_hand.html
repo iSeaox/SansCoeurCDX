@@ -41,11 +41,11 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">Points réalisés équipe A</label>
-          <input type="number" class="form-control" name="score_team_a" value="{{ hand[8] }}" min="0" max="162">
+          <input type="number" class="form-control" name="score_team_a" id="score_team_a" value="{{ hand[8] }}" min="0" max="162">
         </div>
         <div class="col-md-3">
           <label class="form-label">Points réalisés équipe B</label>
-          <input type="number" class="form-control" name="score_team_b" value="{{ hand[9] }}" min="0" max="162">
+          <input type="number" class="form-control" name="score_team_b" id="score_team_b" value="{{ hand[9] }}" min="0" max="162">
         </div>
         <div class="col-md-3">
           <label class="form-label">Belotes équipe A</label>
@@ -76,4 +76,55 @@
       </form>
     </div>
   </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const scoreAInput = document.getElementById('score_team_a');
+  const scoreBInput = document.getElementById('score_team_b');
+  let updatingScore = false;
+
+  function clamp0to162(n) {
+    n = isNaN(n) ? 0 : n;
+    if (n < 0) return 0;
+    if (n > 162) return 162;
+    return n;
+  }
+
+  function complementScores(changed) {
+    if (updatingScore) return;
+    updatingScore = true;
+    try {
+      if (changed === 'A' && scoreAInput && scoreBInput) {
+        const a = scoreAInput.value === '' ? null : clamp0to162(parseInt(scoreAInput.value, 10));
+        if (a === null) {
+          scoreBInput.value = '';
+        } else {
+          scoreAInput.value = String(a);
+          scoreBInput.value = String(162 - a);
+        }
+      } else if (changed === 'B' && scoreAInput && scoreBInput) {
+        const b = scoreBInput.value === '' ? null : clamp0to162(parseInt(scoreBInput.value, 10));
+        if (b === null) {
+          scoreAInput.value = '';
+        } else {
+          scoreBInput.value = String(b);
+          scoreAInput.value = String(162 - b);
+        }
+      }
+    } finally {
+      updatingScore = false;
+    }
+  }
+
+  // Ajouter les écouteurs d'événements
+  scoreAInput && scoreAInput.addEventListener('input', function() { 
+    complementScores('A'); 
+  });
+  scoreBInput && scoreBInput.addEventListener('input', function() { 
+    complementScores('B'); 
+  });
+})();
+</script>
 {% endblock %}

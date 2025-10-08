@@ -110,6 +110,7 @@
       }];
 
       const layout = {
+        dragmode: false,
         title: {
           text: heatmapData.title,
           font: { size: 16, color: '#495057' }
@@ -117,6 +118,7 @@
         margin: { t: 60, l: 20, r: 20, b: 40 },
         height: 300,
         xaxis: {
+          fixedrange: true,
           title: '',
           ticks: '',
           showgrid: false,
@@ -124,6 +126,7 @@
           zeroline: false
         },
         yaxis: {
+          fixedrange: true,
           title: '',
           ticks: '',
           showticklabels: false,

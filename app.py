@@ -534,6 +534,26 @@ def create_app():
 			flash('Erreur lors de la modification.', 'danger')
 		return redirect(url_for('admin_panel'))
 
+	@app.route('/admin/delete_game/<int:game_id>', methods=['POST'])
+	def delete_game(game_id: int):
+		if not admin_required():
+			return redirect(url_for('index'))
+		
+		# Verify game exists
+		game_row = games_repo.load_game_basics(g.db, game_id)
+		if not game_row:
+			flash('Partie introuvable.', 'warning')
+			return redirect(url_for('games_list'))
+		
+		# Delete the game and all associated data
+		success = games_repo.delete_game(g.db, game_id)
+		if success:
+			flash('Partie supprimée avec succès.', 'success')
+		else:
+			flash('Erreur lors de la suppression de la partie.', 'danger')
+		
+		return redirect(url_for('games_list'))
+
 	# CLI command to (re)initialize the database
 	@app.cli.command('init-db')
 	def init_db_command():

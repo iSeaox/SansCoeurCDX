@@ -19,6 +19,9 @@
             <th>Score</th>
             <th>Objectif</th>
             <th>Etat</th>
+            {% if session.get('is_admin') %}
+            <th>Actions</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -30,6 +33,16 @@
               <td><strong>{{ g.score_a }}</strong> - <strong>{{ g.score_b }}</strong></td>
               <td>{{ g.target_points }}</td>
               <td><span class="badge text-bg-secondary">{{ g.state }}</span></td>
+              {% if session.get('is_admin') %}
+              <td>
+                <form method="POST" action="{{ url_for('delete_game', game_id=g.id) }}" style="display: inline;" 
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette partie ? Cette action est irréversible et supprimera également toutes les manches associées.')">
+                  <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i> Supprimer
+                  </button>
+                </form>
+              </td>
+              {% endif %}
             </tr>
           {% endfor %}
         </tbody>

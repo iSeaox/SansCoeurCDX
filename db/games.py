@@ -114,3 +114,23 @@ def list_ongoing_games_for_user(db, user_id: int):
             (user_id,),
         )
         return cur.fetchall()
+
+
+def delete_game(db, game_id: int):
+    """Delete a game and all associated data (hands, players)"""
+    try:
+        with closing(db.cursor()) as cur:
+            # Delete hands first (foreign key constraint)
+            cur.execute('DELETE FROM hands WHERE game_id = ?', (game_id,))
+            
+            # Delete game_players
+            cur.execute('DELETE FROM game_players WHERE game_id = ?', (game_id,))
+            
+            # Delete the game itself
+            cur.execute('DELETE FROM games WHERE id = ?', (game_id,))
+            
+            db.commit()
+            return cur.rowcount > 0
+    except Exception:
+        db.rollback()
+        return False

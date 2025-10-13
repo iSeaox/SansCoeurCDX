@@ -63,23 +63,57 @@
 
     <!-- Graphique Performance des Équipes -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-12">
             <div class="card">
                 <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">Victoires par Équipe</h4>
+                    <h4 class="mb-0"><i class="bi bi-people-fill"></i> Top 10 des Meilleures Équipes</h4>
                 </div>
                 <div class="card-body">
-                    <canvas id="teamWinsChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h4 class="mb-0">Scores Moyens par Équipe</h4>
-                </div>
-                <div class="card-body">
-                    <canvas id="teamScoresChart"></canvas>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Paire</th>
+                                    <th class="text-center">Parties Jouées</th>
+                                    <th class="text-center">Victoires</th>
+                                    <th class="text-center">Taux de Victoire</th>
+                                    <th class="text-center">Points Moyens</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pair in team_perf.pairs %}
+                                <tr>
+                                    <td><strong>{{ loop.index }}</strong></td>
+                                    <td>
+                                        <i class="bi bi-trophy{% if loop.index == 1 %}-fill text-warning{% elif loop.index == 2 %} text-secondary{% elif loop.index == 3 %} text-danger{% endif %}"></i>
+                                        <strong>{{ pair.pair_name }}</strong>
+                                    </td>
+                                    <td class="text-center">{{ pair.games_played }}</td>
+                                    <td class="text-center"><span class="badge bg-success">{{ pair.games_won }}</span></td>
+                                    <td class="text-center">
+                                        <div class="progress" style="height: 20px; min-width: 100px;">
+                                            <div class="progress-bar {% if pair.win_rate >= 60 %}bg-success{% elif pair.win_rate >= 40 %}bg-info{% else %}bg-warning{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ pair.win_rate }}%;" 
+                                                 aria-valuenow="{{ pair.win_rate }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                                {{ pair.win_rate }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><strong>{{ pair.avg_points }}</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if not team_perf.pairs %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> Aucune paire n'a encore terminé de partie.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -163,16 +197,6 @@
         </div>
         <div class="card-body">
             <canvas id="contractSuccessChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Distribution des Scores -->
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h3 class="mb-0"><i class="bi bi-graph-up"></i> Distribution des Points Marqués</h3>
-        </div>
-        <div class="card-body">
-            <canvas id="scoreDistributionChart"></canvas>
         </div>
     </div>
 
@@ -348,72 +372,14 @@ const chartColors = {
     warning: 'rgb(255, 193, 7)',
     info: 'rgb(13, 202, 240)',
     secondary: 'rgb(108, 117, 125)',
-    teamA: 'rgb(54, 162, 235)',
-    teamB: 'rgb(255, 99, 132)',
 };
-
-// Graphique Victoires par Équipe
-const teamWinsCtx = document.getElementById('teamWinsChart');
-if (teamWinsCtx) {
-    new Chart(teamWinsCtx, {
-        type: 'pie',
-        data: {
-            labels: {{ team_perf.wins.keys() | list | tojson }},
-            datasets: [{
-                data: {{ team_perf.wins.values() | list | tojson }},
-                backgroundColor: [chartColors.teamA, chartColors.teamB, chartColors.secondary]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                },
-                title: {
-                    display: false
-                }
-            }
-        }
-    });
-}
-
-// Graphique Scores Moyens par Équipe
-const teamScoresCtx = document.getElementById('teamScoresChart');
-if (teamScoresCtx) {
-    new Chart(teamScoresCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Équipe A', 'Équipe B'],
-            datasets: [{
-                label: 'Score Moyen',
-                data: [{{ team_perf.avg_scores.A }}, {{ team_perf.avg_scores.B }}],
-                backgroundColor: [chartColors.teamA, chartColors.teamB]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
-}
 
 // Graphique Distribution des Contrats
 const contractsCtx = document.getElementById('contractsChart');
 if (contractsCtx) {
+    const contractDistribution = {{ contract_stats.distribution | tojson }};
     const contractLabels = {{ contract_stats.distribution.keys() | list | sort | tojson }};
-    const contractData = contractLabels.map(label => {{ contract_stats.distribution | tojson }}[label]);
+    const contractData = contractLabels.map(label => contractDistribution[label]);
     
     new Chart(contractsCtx, {
         type: 'bar',
@@ -512,51 +478,6 @@ if (contractSuccessCtx) {
                     callbacks: {
                         label: function(context) {
                             return 'Réussite: ' + context.parsed.y + '%';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Graphique Distribution des Scores
-const scoreDistCtx = document.getElementById('scoreDistributionChart');
-if (scoreDistCtx) {
-    const scoreDistData = {{ score_dist | tojson }};
-    const sortedKeys = Object.keys(scoreDistData).sort((a, b) => parseInt(a) - parseInt(b));
-    const labels = sortedKeys.map(key => key + '-' + (parseInt(key) + 9));
-    const data = sortedKeys.map(key => scoreDistData[key]);
-    
-    new Chart(scoreDistCtx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Nombre de manches',
-                data: data,
-                borderColor: chartColors.info,
-                backgroundColor: 'rgba(13, 202, 240, 0.1)',
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        title: function(context) {
-                            return 'Points: ' + context[0].label;
                         }
                     }
                 }

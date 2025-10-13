@@ -379,40 +379,49 @@ def get_score_distribution(db):
 
 
 def get_team_performance(db):
-    """Analyse la performance relative des équipes A vs B"""
+    """Analyse la performance des paires de joueurs"""
     with closing(db.cursor()) as cur:
-        # Victoires par équipe
+        # Statistiques par paire de joueurs
         cur.execute("""
             SELECT 
-                CASE 
-                    WHEN points_team_a > points_team_b THEN 'A'
-                    WHEN points_team_b > points_team_a THEN 'B'
-                    ELSE 'Égalité'
-                END as winner,
-                COUNT(*) as count
-            FROM games
-            WHERE state = 'terminee'
-            GROUP BY winner
+                u1.username || ' & ' || u2.username as pair_name,
+                COUNT(DISTINCT g.id) as games_played,
+                SUM(CASE 
+                    WHEN g.state = 'terminee' AND gp1.team = 'A' AND g.points_team_a > g.points_team_b THEN 1
+                    WHEN g.state = 'terminee' AND gp1.team = 'B' AND g.points_team_b > g.points_team_a THEN 1
+                    ELSE 0
+                END) as games_won,
+                AVG(CASE 
+                    WHEN gp1.team = 'A' THEN g.points_team_a
+                    WHEN gp1.team = 'B' THEN g.points_team_b
+                    ELSE 0
+                END) as avg_points
+            FROM game_players gp1
+            JOIN game_players gp2 ON gp2.game_id = gp1.game_id 
+                AND gp2.team = gp1.team 
+                AND gp2.user_id > gp1.user_id
+            JOIN users u1 ON u1.id = gp1.user_id
+            JOIN users u2 ON u2.id = gp2.user_id
+            JOIN games g ON g.id = gp1.game_id
+            WHERE g.state = 'terminee'
+            GROUP BY gp1.user_id, gp2.user_id, u1.username, u2.username
+            HAVING games_played > 0
+            ORDER BY games_won DESC, games_played DESC
+            LIMIT 10
         """)
         
-        team_wins = {row[0]: row[1] for row in cur.fetchall()}
-        
-        # Score moyen par équipe
-        cur.execute("""
-            SELECT 
-                AVG(points_team_a) as avg_a,
-                AVG(points_team_b) as avg_b
-            FROM games
-            WHERE state = 'terminee'
-        """)
-        
-        result = cur.fetchone()
-        avg_scores = {
-            'A': round(result[0], 2) if result[0] else 0,
-            'B': round(result[1], 2) if result[1] else 0
-        }
+        pairs = []
+        for row in cur.fetchall():
+            pair_name, games_played, games_won, avg_points = row
+            win_rate = round((games_won / games_played * 100), 2) if games_played > 0 else 0
+            pairs.append({
+                'pair_name': pair_name,
+                'games_played': games_played,
+                'games_won': games_won,
+                'win_rate': win_rate,
+                'avg_points': round(avg_points, 2) if avg_points else 0
+            })
         
         return {
-            'wins': team_wins,
-            'avg_scores': avg_scores
+            'pairs': pairs
         }

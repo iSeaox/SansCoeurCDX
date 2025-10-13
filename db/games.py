@@ -163,3 +163,36 @@ def get_games_count_by_day(db, year: int, month: int):
         
         # Convert to dictionary for easy lookup
         return {day: count for day, count in results}
+
+
+def update_target_points(db, game_id: int, new_target: int, now: str):
+    """Update the target points for a game and recompute its state.
+    
+    If the game was finished and the new target is higher than both team scores,
+    it will be set back to 'en_cours'.
+    """
+    with closing(db.cursor()) as cur:
+        # Get current game state and scores
+        cur.execute(
+            "SELECT points_team_a, points_team_b, state FROM games WHERE id = ?",
+            (game_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return False
+        
+        points_a, points_b, current_state = row
+        
+        # Determine new state based on new target
+        new_state = 'en_cours'
+        if points_a >= new_target or points_b >= new_target:
+            new_state = 'terminee'
+        
+        # Update the game
+        cur.execute(
+            "UPDATE games SET target_points = ?, state = ?, updated_at = ? WHERE id = ?",
+            (new_target, new_state, now, game_id)
+        )
+        
+        db.commit()
+        return True

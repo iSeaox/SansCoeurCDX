@@ -314,13 +314,16 @@ def create_app():
 			return redirect(url_for('game_detail', game_id=game_id))
 
 		# GET render
+		user_id = session.get('user_id')
+		is_participant = user_id and any(p[0] == user_id for p in players)
 		return render_template(
 			'game_detail.html',
 			game=game,
 			team_a=team_a,
 			team_b=team_b,
 			hands=hands,
-			can_add_hand=(session.get('user_id') and game['state'] == 'en_cours' and any(p[0] == session.get('user_id') for p in players)),
+			can_add_hand=(user_id and game['state'] == 'en_cours' and is_participant),
+			is_participant=is_participant,
 			players=players,
 		)
 
@@ -344,6 +347,39 @@ def create_app():
 		games_repo.recompute_totals_and_update_game(g.db, game_id, games_repo.load_game_basics(g.db, game_id)[7], now)
 		flash('Manche supprimée.', 'info')
 		return redirect(url_for('game_detail', game_id=game_id))
+
+	@app.route('/games/<int:game_id>/update_target', methods=['POST'])
+	def update_target_points(game_id: int):
+		# Must be logged in and a participant
+		if not session.get('user_id'):
+			flash('Veuillez vous connecter pour continuer.', 'warning')
+			return redirect(url_for('login'))
+		user_id = session.get('user_id')
+		if not games_repo.is_participant(g.db, game_id, user_id):
+			flash("Seuls les membres de la partie peuvent modifier l'objectif.", 'danger')
+			return redirect(url_for('game_detail', game_id=game_id))
+		
+		# Validate and get new target
+		try:
+			new_target = int(request.form.get('target_points', 1000))
+			if new_target < 100:
+				flash("L'objectif doit être d'au moins 100 points.", 'warning')
+				return redirect(url_for('game_detail', game_id=game_id))
+		except ValueError:
+			flash("Valeur d'objectif invalide.", 'danger')
+			return redirect(url_for('game_detail', game_id=game_id))
+		
+		# Update target points
+		now = datetime.utcnow().isoformat(timespec='seconds')
+		success = games_repo.update_target_points(g.db, game_id, new_target, now)
+		
+		if success:
+			flash('Objectif de points modifié avec succès.', 'success')
+		else:
+			flash('Erreur lors de la modification de l\'objectif.', 'danger')
+		
+		return redirect(url_for('game_detail', game_id=game_id))
+
 
 	@app.route('/games/<int:game_id>/hands/<int:hand_id>/edit', methods=['GET', 'POST'])
 	def edit_hand(game_id: int, hand_id: int):

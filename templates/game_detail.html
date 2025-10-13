@@ -21,7 +21,12 @@
         <div class="card-body">
           <div class="fw-bold mb-1">Score</div>
           <div class="display-6">{{ game.score_a }} — {{ game.score_b }}</div>
-          <div class="text-muted">Objectif: {{ game.target_points }}</div>
+          <div class="text-muted d-flex align-items-center gap-2">
+            <span>Objectif: {{ game.target_points }}</span>
+            {% if is_participant %}
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTargetModal">✏️</button>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
@@ -189,6 +194,34 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- Modal pour modifier l'objectif -->
+  {% if is_participant %}
+  <div class="modal fade" id="editTargetModal" tabindex="-1" aria-labelledby="editTargetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editTargetModalLabel">Modifier l'objectif de points</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{{ url_for('update_target_points', game_id=game.id) }}">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="target_points" class="form-label">Nombre de points à atteindre</label>
+              <input type="number" class="form-control" id="target_points" name="target_points" value="{{ game.target_points }}" min="100" step="50" required>
+              <div class="form-text">Cette modification réévaluera l'état de la partie.</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% block scripts %}
     {% if hands %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

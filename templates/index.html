@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Accueil • Coinche{% endblock %}
 {% block content %}
-  <!-- Section d'en-tête -->
   <div class="text-center py-5">
     <h1 class="display-4 fw-bold text-primary">Coinche Tracker</h1>
     <p class="lead text-muted mb-4">Enregistrez et suivez vos parties de coinche facilement</p>
@@ -21,7 +20,6 @@
     </div>
   </div>
 
-  <!-- Section du graphique d'activité -->
   <div class="row justify-content-center mb-5">
     <div class="col-lg-10">
       <div class="card shadow-sm border-0">
@@ -38,7 +36,6 @@
     </div>
   </div>
 
-  <!-- Section informations rapides (optionnelle pour l'avenir) -->
   <div class="row g-4 mb-5">
     <div class="col-md-4">
       <div class="card h-100 border-0 shadow-sm">
@@ -84,7 +81,7 @@
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}  {# Pour inclure les scripts de base.html comme Bootstrap #}
+  {{ super() }}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   
   <script src="https://cdn.plot.ly/plotly-3.1.0.min.js" charset="utf-8"></script>
@@ -146,7 +143,6 @@
 
       Plotly.newPlot('day_heatmap', data, layout, config);
       
-      // Redimensionner le graphique quand la fenêtre change de taille
       window.addEventListener('resize', function() {
         Plotly.Plots.resize('day_heatmap');
       });

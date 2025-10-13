@@ -6,7 +6,6 @@
 <div class="container mt-4">
     <h1 class="mb-4"><i class="bi bi-graph-up"></i> Statistiques de la Contrée</h1>
 
-    <!-- Statistiques globales -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
             <h3 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Statistiques Globales</h3>
@@ -61,7 +60,6 @@
         </div>
     </div>
 
-    <!-- Graphique Performance des Équipes -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -119,7 +117,6 @@
         </div>
     </div>
 
-    <!-- Événements Spéciaux -->
     <div class="card mb-4">
         <div class="card-header bg-warning text-dark">
             <h3 class="mb-0"><i class="bi bi-star-fill"></i> Événements Spéciaux</h3>
@@ -166,7 +163,6 @@
         </div>
     </div>
 
-    <!-- Graphiques Contrats et Atouts -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
@@ -190,7 +186,6 @@
         </div>
     </div>
 
-    <!-- Taux de Réussite des Contrats -->
     <div class="card mb-4">
         <div class="card-header bg-success text-white">
             <h3 class="mb-0"><i class="bi bi-check-circle"></i> Taux de Réussite des Contrats</h3>
@@ -200,7 +195,6 @@
         </div>
     </div>
 
-    <!-- Classement des Joueurs -->
     <div class="card mb-4">
         <div class="card-header bg-dark text-white">
             <h3 class="mb-0"><i class="bi bi-trophy-fill"></i> Classement des Joueurs</h3>
@@ -246,7 +240,6 @@
         </div>
     </div>
 
-    <!-- Statistiques des Preneurs -->
     <div class="card mb-4">
         <div class="card-header bg-danger text-white">
             <h3 class="mb-0"><i class="bi bi-person-badge"></i> Statistiques des Preneurs</h3>
@@ -291,7 +284,6 @@
         </div>
     </div>
 
-    <!-- Statistiques Personnelles (si connecté) -->
     {% if personal_stats %}
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
@@ -299,7 +291,6 @@
         </div>
         <div class="card-body">
             <div class="row">
-                <!-- Adversaires -->
                 <div class="col-md-6">
                     <h4>Face à face avec les adversaires</h4>
                     <div class="table-responsive">
@@ -328,7 +319,6 @@
                     </div>
                 </div>
                 
-                <!-- Partenaires -->
                 <div class="col-md-6">
                     <h4>Avec mes partenaires</h4>
                     <div class="table-responsive">
@@ -360,11 +350,9 @@
     {% endif %}
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-// Configuration des couleurs
 const chartColors = {
     primary: 'rgb(13, 110, 253)',
     success: 'rgb(25, 135, 84)',
@@ -374,18 +362,14 @@ const chartColors = {
     secondary: 'rgb(108, 117, 125)',
 };
 
-// Graphique Distribution des Contrats
 const contractsCtx = document.getElementById('contractsChart');
 if (contractsCtx) {
     const contractDistribution = {{ contract_stats.distribution | tojson }};
     const allLabels = {{ contract_stats.distribution.keys() | list | tojson }};
     
-    // Fonction de tri personnalisée pour les contrats
     const contractLabels = allLabels.sort((a, b) => {
-        // Les contrats spéciaux à la fin
         if (a === 'Capot' || a === 'Générale') return 1;
         if (b === 'Capot' || b === 'Générale') return -1;
-        // Tri numérique pour les autres
         return parseInt(a) - parseInt(b);
     });
     
@@ -421,7 +405,6 @@ if (contractsCtx) {
     });
 }
 
-// Graphique Distribution des Atouts
 const trumpsCtx = document.getElementById('trumpsChart');
 if (trumpsCtx) {
     new Chart(trumpsCtx, {
@@ -452,17 +435,13 @@ if (trumpsCtx) {
     });
 }
 
-// Graphique Taux de Réussite des Contrats
 const contractSuccessCtx = document.getElementById('contractSuccessChart');
 if (contractSuccessCtx) {
     const successData = {{ contract_stats.success_rates | tojson }};
     
-    // Tri des données de contrats dans l'ordre logique
     const sortedSuccessData = successData.sort((a, b) => {
-        // Les contrats spéciaux à la fin
         if (a.contract === 'Capot' || a.contract === 'Générale') return 1;
         if (b.contract === 'Capot' || b.contract === 'Générale') return -1;
-        // Tri numérique pour les autres
         return parseInt(a.contract) - parseInt(b.contract);
     });
     

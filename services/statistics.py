@@ -7,23 +7,18 @@ def get_global_statistics(db):
     stats = {}
     
     with closing(db.cursor()) as cur:
-        # Nombre total de parties
         cur.execute("SELECT COUNT(*) FROM games")
         stats['total_games'] = cur.fetchone()[0]
         
-        # Parties par statut
         cur.execute("SELECT state, COUNT(*) FROM games GROUP BY state")
         stats['games_by_state'] = {row[0]: row[1] for row in cur.fetchall()}
         
-        # Nombre total de manches
         cur.execute("SELECT COUNT(*) FROM hands")
         stats['total_hands'] = cur.fetchone()[0]
         
-        # Nombre total d'utilisateurs
         cur.execute("SELECT COUNT(*) FROM users WHERE is_active = 1")
         stats['total_active_users'] = cur.fetchone()[0]
         
-        # Durée moyenne d'une partie (en manches)
         cur.execute("""
             SELECT AVG(hand_count) 
             FROM (SELECT game_id, COUNT(*) as hand_count FROM hands GROUP BY game_id)
@@ -31,7 +26,6 @@ def get_global_statistics(db):
         result = cur.fetchone()[0]
         stats['avg_hands_per_game'] = round(result, 2) if result else 0
         
-        # Points moyens marqués par partie
         cur.execute("SELECT AVG(points_team_a + points_team_b) FROM games WHERE state = 'terminee'")
         result = cur.fetchone()[0]
         stats['avg_total_points'] = round(result, 2) if result else 0
@@ -89,7 +83,6 @@ def get_player_statistics(db):
 def get_contract_statistics(db):
     """Récupère les statistiques sur les contrats"""
     with closing(db.cursor()) as cur:
-        # Distribution des contrats
         cur.execute("""
             SELECT contract, COUNT(*) as count
             FROM hands
@@ -99,7 +92,6 @@ def get_contract_statistics(db):
         """)
         contracts_distribution = {row[0]: row[1] for row in cur.fetchall()}
         
-        # Taux de réussite des contrats
         cur.execute("""
             SELECT 
                 h.contract,
@@ -137,7 +129,6 @@ def get_contract_statistics(db):
 def get_trump_statistics(db):
     """Récupère les statistiques sur les atouts"""
     with closing(db.cursor()) as cur:
-        # Distribution des atouts
         cur.execute("""
             SELECT trump, COUNT(*) as count
             FROM hands
@@ -147,7 +138,6 @@ def get_trump_statistics(db):
         """)
         trump_distribution = {row[0]: row[1] for row in cur.fetchall()}
         
-        # Points moyens par type d'atout
         cur.execute("""
             SELECT 
                 trump,
@@ -168,19 +158,15 @@ def get_trump_statistics(db):
 def get_special_events_statistics(db):
     """Récupère les statistiques sur les événements spéciaux"""
     with closing(db.cursor()) as cur:
-        # Nombre de coinches
         cur.execute("SELECT COUNT(*) FROM hands WHERE coinche = 1")
         coinches = cur.fetchone()[0]
         
-        # Nombre de surcoinches
         cur.execute("SELECT COUNT(*) FROM hands WHERE surcoinche = 1")
         surcoinches = cur.fetchone()[0]
         
-        # Nombre de capots
         cur.execute("SELECT COUNT(*) FROM hands WHERE capot_team IS NOT NULL")
         capots = cur.fetchone()[0]
         
-        # Distribution des capots par équipe
         cur.execute("""
             SELECT capot_team, COUNT(*) as count
             FROM hands
@@ -189,15 +175,12 @@ def get_special_events_statistics(db):
         """)
         capots_by_team = {row[0]: row[1] for row in cur.fetchall()}
         
-        # Nombre de générales
         cur.execute("SELECT COUNT(*) FROM hands WHERE general = 1")
         generales = cur.fetchone()[0]
         
-        # Belotes
         cur.execute("SELECT SUM(belote_a + belote_b) FROM hands")
         total_belotes = cur.fetchone()[0] or 0
         
-        # Taux de réussite des coinches
         cur.execute("""
             SELECT 
                 COUNT(*) as total,
@@ -228,7 +211,6 @@ def get_special_events_statistics(db):
 def get_player_vs_player_statistics(db, user_id):
     """Récupère les statistiques d'un joueur contre d'autres joueurs"""
     with closing(db.cursor()) as cur:
-        # Statistiques contre chaque adversaire
         cur.execute("""
             SELECT 
                 u2.id,
@@ -267,7 +249,6 @@ def get_player_vs_player_statistics(db, user_id):
                 'win_rate': win_rate
             })
         
-        # Statistiques avec chaque partenaire
         cur.execute("""
             SELECT 
                 u2.id,
@@ -352,7 +333,6 @@ def get_player_taking_statistics(db):
 def get_score_distribution(db):
     """Récupère la distribution des scores par manche"""
     with closing(db.cursor()) as cur:
-        # Distribution des points marqués par le preneur
         cur.execute("""
             SELECT 
                 CASE 
@@ -371,7 +351,6 @@ def get_score_distribution(db):
         points_distribution = {}
         for row in cur.fetchall():
             points, count = row
-            # Regrouper par tranches de 10 points
             bucket = (points // 10) * 10
             points_distribution[bucket] = points_distribution.get(bucket, 0) + count
         
@@ -381,7 +360,6 @@ def get_score_distribution(db):
 def get_team_performance(db):
     """Analyse la performance des paires de joueurs"""
     with closing(db.cursor()) as cur:
-        # Statistiques par paire de joueurs
         cur.execute("""
             SELECT 
                 u1.username || ' & ' || u2.username as pair_name,

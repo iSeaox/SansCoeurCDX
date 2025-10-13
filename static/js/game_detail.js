@@ -47,10 +47,8 @@
       return;
     }
     if (t === 'tout atout') {
-      // total <= 4
       if (a + b > 4) {
         const excess = a + b - 4;
-        // reduce B first
         const reduceB = Math.min(excess, b);
         b -= reduceB;
         const reduceA = excess - reduceB;
@@ -60,14 +58,10 @@
       }
       return;
     }
-    // color trump: total <=1
     if (a + b > 1) {
-      // keep A, zero B (arbitrary; user can tweak)
       if (beloteB) beloteB.value = '0';
     }
   }
-
-  // Preview fields removed
 
   function clamp0to162(n) {
     n = isNaN(n) ? 0 : n;
@@ -100,14 +94,12 @@
     } finally {
       updatingScore = false;
     }
-  // no preview
   }
 
   function getTakerTeam() {
     if (!takerSel) return null;
     const opt = takerSel.selectedOptions && takerSel.selectedOptions[0];
     if (!opt) return null;
-    // Prefer data-team if present, else parse text like "Name (A)"
     const dataTeam = opt.getAttribute('data-team');
     if (dataTeam === 'A' || dataTeam === 'B') return dataTeam;
     const txt = opt.textContent || '';
@@ -130,7 +122,6 @@
     } finally {
       updatingScore = false;
     }
-  // no preview
   }
 
   trumpSel && trumpSel.addEventListener('change', function() {
@@ -139,7 +130,6 @@
   });
   contractSel && contractSel.addEventListener('change', syncSpecialFromContract);
   takerSel && takerSel.addEventListener('change', function() {
-    // If current selection has special checked, re-apply 162 to new taker team
     if (generalCb && generalCb.checked) {
       setScoresForTaker162();
     }
@@ -151,9 +141,7 @@
   generalCb && generalCb.addEventListener('change', function() {
     if (generalCb.checked) setScoresForTaker162();
   });
-  // init
   updateBeloteMax();
   syncSpecialFromContract();
   enforceBeloteSumPerTrump();
-  // no preview to init
 })();

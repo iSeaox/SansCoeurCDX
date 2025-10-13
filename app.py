@@ -63,16 +63,13 @@ def create_app():
 		if not value:
 			return ''
 		try:
-			# Accept already formatted or ISO strings
 			if isinstance(value, str):
-				# Normalize common formats
 				val = value.replace('T', ' ')
 				dt = datetime.fromisoformat(val)
 			else:
 				dt = value
 			return dt.strftime('%d/%m/%Y %H:%M')
 		except Exception:
-			# Fallback: simple replace of T
 			return str(value).replace('T', ' ')
 
 	app.jinja_env.filters['fr_datetime'] = fr_datetime
@@ -114,7 +111,6 @@ def create_app():
 			password = request.form.get('password', '').strip()
 			password_confirm = request.form.get('password_confirm', '').strip()
 			
-			# Validation
 			if not username or not password:
 				flash('Nom d\'utilisateur et mot de passe requis.', 'danger')
 				return render_template('register.html')
@@ -127,13 +123,11 @@ def create_app():
 				flash('Les mots de passe ne correspondent pas.', 'danger')
 				return render_template('register.html')
 			
-			# Vérifier si l'utilisateur existe déjà
 			existing_user = users_repo.find_user_by_username(g.db, username)
 			if existing_user:
 				flash('Ce nom d\'utilisateur est déjà pris.', 'danger')
 				return render_template('register.html')
 			
-			# Créer l'utilisateur inactif
 			password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 			now = datetime.utcnow().isoformat(timespec='seconds')
 			user_id = users_repo.create_inactive_user(g.db, username, password_hash, now)
@@ -186,7 +180,6 @@ def create_app():
 
 	@app.route('/games/<int:game_id>', methods=['GET', 'POST'])
 	def game_detail(game_id: int):
-		# Load game, players, hands
 		game_row = games_repo.load_game_basics(g.db, game_id)
 		if not game_row:
 			flash("Partie introuvable.", 'warning')
@@ -206,19 +199,16 @@ def create_app():
 		team_b = [p for p in players if p[2] == 'B']
 		hands = hands_repo.list_hands(g.db, game_id)
 
-		# POST: add a hand if allowed
 		if request.method == 'POST':
 			if not login_required():
 				return redirect(url_for('login'))
 			user_id = session.get('user_id')
-			# Only participants can add hands and only if game in progress
 			if game['state'] != 'en_cours':
 				flash("La partie n'est pas en cours.", 'warning')
 				return redirect(url_for('game_detail', game_id=game_id))
 			if not games_repo.is_participant(g.db, game_id, user_id):
 				flash("Seuls les joueurs de la partie peuvent ajouter des manches.", 'danger')
 				return redirect(url_for('game_detail', game_id=game_id))
-			# Parse form
 			try:
 				taker_user_id = int(request.form.get('taker_user_id') or 0) or None
 				pre_score_a = int(request.form.get('score_team_a') or 0)
@@ -230,7 +220,6 @@ def create_app():
 			trump = (request.form.get('trump') or '').strip() or None
 			coinche = 1 if (request.form.get('coinche') == 'on') else 0
 			surcoinche = 1 if (request.form.get('surcoinche') == 'on') else 0
-			# belotes and general
 			try:
 				belote_a = int(request.form.get('belote_a') or 0)
 				belote_b = int(request.form.get('belote_b') or 0)
@@ -238,7 +227,6 @@ def create_app():
 				flash('Belotes invalides.', 'danger')
 				return redirect(url_for('game_detail', game_id=game_id))
 			general = 1 if (request.form.get('general') == 'on') else 0
-			# Contract validation: either numeric (80..180 step 10) or special values
 			special_contracts = {'Capot', 'Générale'}
 			contract = None
 			if contract_raw:
@@ -253,7 +241,6 @@ def create_app():
 					except ValueError:
 						flash('Contrat invalide: choisissez un nombre entre 80 et 180 (pas de 10) ou un contrat spécial.', 'danger')
 						return redirect(url_for('game_detail', game_id=game_id))
-			# Belote rules per trump
 			trump_norm = (trump or '').strip().lower()
 			if trump_norm == 'sans atout':
 				if belote_a > 0 or belote_b > 0:
@@ -267,22 +254,18 @@ def create_app():
 				if (belote_a + belote_b) > 1:
 					flash('Avec un atout couleur, une seule belote au total (A+B) est autorisée.', 'warning')
 					return redirect(url_for('game_detail', game_id=game_id))
-			# Validate taker belongs to game if provided
 			if taker_user_id and not games_repo.is_participant(g.db, game_id, taker_user_id):
 				flash("Le preneur doit être un joueur de la partie.", 'danger')
 				return redirect(url_for('game_detail', game_id=game_id))
 			taker_team = None
 			if taker_user_id:
-				# players: list of tuples (user_id, username, team, position)
 				for p in players:
 					if p[0] == taker_user_id:
 						taker_team = p[2]
 						break
-			# Require a contract
 			if not contract:
 				flash('Veuillez choisir un contrat.', 'warning')
 				return redirect(url_for('game_detail', game_id=game_id))
-			# Require a taker to compute score
 			if not taker_team:
 				flash('Veuillez choisir un preneur.', 'warning')
 				return redirect(url_for('game_detail', game_id=game_id))
@@ -302,17 +285,14 @@ def create_app():
 				"contract": contract,
 				"trump": trump
 			})
-			# compute_score returns a dict with keys 'A' and 'B'
 			score_a = int(computed_scores.get("A", 0))
 			score_b = int(computed_scores.get("B", 0))
-			# Derive capot team from points made (pre-scores)
 			capot_team = None
 			if pre_score_a == 162 and pre_score_b == 0:
 				capot_team = 'A'
 			elif pre_score_b == 162 and pre_score_a == 0:
 				capot_team = 'B'
 
-			# Next hand number
 			number = hands_repo.next_hand_number(g.db, game_id)
 			now = datetime.utcnow().isoformat(timespec='seconds')
 			hands_repo.insert_hand(
@@ -324,7 +304,6 @@ def create_app():
 			flash('Manche ajoutée.', 'success')
 			return redirect(url_for('game_detail', game_id=game_id))
 
-		# GET render
 		user_id = session.get('user_id')
 		is_participant = user_id and any(p[0] == user_id for p in players)
 		return render_template(
@@ -340,7 +319,6 @@ def create_app():
 
 	@app.route('/games/<int:game_id>/hands/<int:hand_id>/delete', methods=['POST'])
 	def delete_hand(game_id: int, hand_id: int):
-		# Must be logged in and a participant
 		if not session.get('user_id'):
 			flash('Veuillez vous connecter pour continuer.', 'warning')
 			return redirect(url_for('login'))
@@ -348,7 +326,6 @@ def create_app():
 		if not games_repo.is_participant(g.db, game_id, user_id):
 			flash("Action non autorisée.", 'danger')
 			return redirect(url_for('game_detail', game_id=game_id))
-		# Delete the hand then recompute totals
 		h = hands_repo.get_hand(g.db, hand_id)
 		if not h or h[1] != game_id:
 			flash("Manche introuvable.", 'warning')
@@ -361,7 +338,6 @@ def create_app():
 
 	@app.route('/games/<int:game_id>/update_target', methods=['POST'])
 	def update_target_points(game_id: int):
-		# Must be logged in and a participant
 		if not session.get('user_id'):
 			flash('Veuillez vous connecter pour continuer.', 'warning')
 			return redirect(url_for('login'))
@@ -370,7 +346,6 @@ def create_app():
 			flash("Seuls les membres de la partie peuvent modifier l'objectif.", 'danger')
 			return redirect(url_for('game_detail', game_id=game_id))
 		
-		# Validate and get new target
 		try:
 			new_target = int(request.form.get('target_points', 1000))
 			if new_target < 100:
@@ -380,7 +355,6 @@ def create_app():
 			flash("Valeur d'objectif invalide.", 'danger')
 			return redirect(url_for('game_detail', game_id=game_id))
 		
-		# Update target points
 		now = datetime.utcnow().isoformat(timespec='seconds')
 		success = games_repo.update_target_points(g.db, game_id, new_target, now)
 		
@@ -394,7 +368,6 @@ def create_app():
 
 	@app.route('/games/<int:game_id>/hands/<int:hand_id>/edit', methods=['GET', 'POST'])
 	def edit_hand(game_id: int, hand_id: int):
-		# Must be logged in and a participant
 		if not session.get('user_id'):
 			flash('Veuillez vous connecter pour continuer.', 'warning')
 			return redirect(url_for('login'))
@@ -402,7 +375,6 @@ def create_app():
 		if not games_repo.is_participant(g.db, game_id, user_id):
 			flash("Action non autorisée.", 'danger')
 			return redirect(url_for('game_detail', game_id=game_id))
-		# Load game and hand
 		game_row = games_repo.load_game_basics(g.db, game_id)
 		if not game_row:
 			flash('Partie introuvable.', 'warning')
@@ -413,7 +385,6 @@ def create_app():
 			return redirect(url_for('game_detail', game_id=game_id))
 		players = games_repo.load_players(g.db, game_id)
 		if request.method == 'POST':
-			# Parse and validate like creation
 			try:
 				taker_user_id = int(request.form.get('taker_user_id') or 0) or None
 				pre_score_a = int(request.form.get('score_team_a') or 0)
@@ -432,7 +403,6 @@ def create_app():
 				flash('Belotes invalides.', 'danger')
 				return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
 			general = 1 if (request.form.get('general') == 'on') else 0
-			# Contract validation
 			special_contracts = {'Capot', 'Générale'}
 			contract = None
 			if contract_raw:
@@ -447,7 +417,6 @@ def create_app():
 					except ValueError:
 						flash('Contrat invalide: choisissez un nombre entre 80 et 180 (pas de 10) ou un contrat spécial.', 'danger')
 						return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
-			# Belote rules per trump (same as creation)
 			trump_norm = (trump or '').strip().lower()
 			if trump_norm == 'sans atout':
 				if belote_a > 0 or belote_b > 0:
@@ -461,7 +430,6 @@ def create_app():
 				if (belote_a + belote_b) > 1:
 					flash('Avec un atout couleur, une seule belote au total (A+B) est autorisée.', 'warning')
 					return redirect(url_for('edit_hand', game_id=game_id, hand_id=hand_id))
-			# Taker team
 			taker_team = None
 			if taker_user_id:
 				for p in players:
@@ -500,7 +468,6 @@ def create_app():
 			games_repo.recompute_totals_and_update_game(g.db, game_id, game_row[7], now)
 			flash('Manche modifiée.', 'success')
 			return redirect(url_for('game_detail', game_id=game_id))
-		# GET: render edit form
 		players = games_repo.load_players(g.db, game_id)
 		return render_template('edit_hand.html', game_id=game_id, hand=hand, players=players)
 
@@ -509,7 +476,6 @@ def create_app():
 		if not login_required():
 			return redirect(url_for('login'))
 		if request.method == 'POST':
-			# Read selected players
 			try:
 				p_a1 = int(request.form.get('team_a_player1') or 0)
 				p_a2 = int(request.form.get('team_a_player2') or 0)
@@ -519,11 +485,9 @@ def create_app():
 				flash('Sélection de joueurs invalide.', 'danger')
 				return redirect(url_for('new_game'))
 			players = [p_a1, p_a2, p_b1, p_b2]
-			# Validate players: 4 distinct and > 0
 			if any(p <= 0 for p in players) or len(set(players)) != 4:
 				flash('Veuillez sélectionner 4 joueurs distincts.', 'danger')
 				return redirect(url_for('new_game'))
-			# Target points
 			try:
 				target_points = int(request.form.get('target_points') or 1000)
 			except ValueError:
@@ -536,7 +500,6 @@ def create_app():
 			games_repo.create_game(g.db, created_by, target_points, players, now)
 			flash('Partie créée.', 'success')
 			return redirect(url_for('games_list'))
-		# GET
 		users = users_repo.get_active_users(g.db)
 		if len(users) < 4:
 			flash("Vous devez avoir au moins 4 utilisateurs actifs pour créer une partie (utilisez la CLI create-user).", 'warning')
@@ -562,13 +525,11 @@ def create_app():
 			}
 			for r in rows
 		]
-		# Statistiques personnelles
 		from services.statistics import get_player_statistics, get_player_vs_player_statistics, get_player_taking_statistics
 		player_stats = get_player_statistics(g.db)
 		personal_stats = get_player_vs_player_statistics(g.db, user_id)
 		taking_stats = get_player_taking_statistics(g.db)
 
-		# Filtrer les stats du joueur courant
 		my_stats = next((p for p in player_stats if p['user_id'] == user_id), None)
 		my_taking_stats = next((t for t in taking_stats if t['user_id'] == user_id), None)
 
@@ -583,31 +544,15 @@ def create_app():
 
 	@app.route('/statistiques')
 	def statistics():
-		# Statistiques globales
 		global_stats = get_global_statistics(g.db)
-		
-		# Statistiques par joueur
 		player_stats = get_player_statistics(g.db)
-		
-		# Statistiques sur les contrats
 		contract_stats = get_contract_statistics(g.db)
-		
-		# Statistiques sur les atouts
 		trump_stats = get_trump_statistics(g.db)
-		
-		# Événements spéciaux
 		special_events = get_special_events_statistics(g.db)
-		
-		# Statistiques des preneurs
 		taking_stats = get_player_taking_statistics(g.db)
-		
-		# Distribution des scores
 		score_dist = get_score_distribution(g.db)
-		
-		# Performance des équipes
 		team_perf = get_team_performance(g.db)
 		
-		# Statistiques personnelles si connecté
 		personal_stats = None
 		if session.get('user_id'):
 			personal_stats = get_player_vs_player_statistics(g.db, session.get('user_id'))
@@ -648,13 +593,11 @@ def create_app():
 		if not admin_required():
 			return redirect(url_for('index'))
 		
-		# Verify game exists
 		game_row = games_repo.load_game_basics(g.db, game_id)
 		if not game_row:
 			flash('Partie introuvable.', 'warning')
 			return redirect(url_for('games_list'))
 		
-		# Delete the game and all associated data
 		success = games_repo.delete_game(g.db, game_id)
 		if success:
 			flash('Partie supprimée avec succès.', 'success')
@@ -663,13 +606,11 @@ def create_app():
 		
 		return redirect(url_for('games_list'))
 
-	# CLI command to (re)initialize the database
 	@app.cli.command('init-db')
 	def init_db_command():
 		init_db(app)
 		print('Base de données initialisée.')
 
-	# CLI to create a user
 	@app.cli.command('create-user')
 	@click.option('--username', prompt=True, help='Nom d\'utilisateur (unique, insensible à la casse)')
 	@click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='Mot de passe')

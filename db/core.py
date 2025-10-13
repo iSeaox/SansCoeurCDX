@@ -7,7 +7,6 @@ from flask import g
 def get_db(app):
     db = getattr(g, '_database', None)
     if db is None:
-        # Ensure parent directory exists
         db_path = app.config['DATABASE']
         db_dir = os.path.dirname(db_path)
         if db_dir and not os.path.exists(db_dir):

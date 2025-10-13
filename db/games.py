@@ -32,7 +32,6 @@ def create_game(db, created_by: int, target_points: int, players: list[int], now
             (now, now, created_by, target_points),
         )
         game_id = cur.lastrowid
-        # players order: [A1, A2, B1, B2]
         cur.executemany(
             "INSERT INTO game_players (game_id, user_id, team, position) VALUES (?, ?, ?, ?)",
             [
@@ -120,13 +119,8 @@ def delete_game(db, game_id: int):
     """Delete a game and all associated data (hands, players)"""
     try:
         with closing(db.cursor()) as cur:
-            # Delete hands first (foreign key constraint)
             cur.execute('DELETE FROM hands WHERE game_id = ?', (game_id,))
-            
-            # Delete game_players
             cur.execute('DELETE FROM game_players WHERE game_id = ?', (game_id,))
-            
-            # Delete the game itself
             cur.execute('DELETE FROM games WHERE id = ?', (game_id,))
             
             db.commit()
@@ -142,8 +136,6 @@ def get_games_count_by_day(db, year: int, month: int):
     Returns a dictionary with day numbers as keys and game counts as values
     """
     with closing(db.cursor()) as cur:
-        # Format the date pattern for the specific month/year
-        # Using YYYY-MM format to match ISO dates in created_at
         date_pattern = f"{year:04d}-{month:02d}-%"
         
         cur.execute(
@@ -161,7 +153,6 @@ def get_games_count_by_day(db, year: int, month: int):
         
         results = cur.fetchall()
         
-        # Convert to dictionary for easy lookup
         return {day: count for day, count in results}
 
 
@@ -172,7 +163,6 @@ def update_target_points(db, game_id: int, new_target: int, now: str):
     it will be set back to 'en_cours'.
     """
     with closing(db.cursor()) as cur:
-        # Get current game state and scores
         cur.execute(
             "SELECT points_team_a, points_team_b, state FROM games WHERE id = ?",
             (game_id,)
@@ -183,12 +173,10 @@ def update_target_points(db, game_id: int, new_target: int, now: str):
         
         points_a, points_b, current_state = row
         
-        # Determine new state based on new target
         new_state = 'en_cours'
         if points_a >= new_target or points_b >= new_target:
             new_state = 'terminee'
         
-        # Update the game
         cur.execute(
             "UPDATE games SET target_points = ?, state = ?, updated_at = ? WHERE id = ?",
             (new_target, new_state, now, game_id)

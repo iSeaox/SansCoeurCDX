@@ -6,7 +6,6 @@ from contextlib import closing
 def init_db(app, db=None):
     close_after = False
     if db is None:
-        # Ensure parent directory exists when creating DB directly
         db_path = app.config['DATABASE']
         db_dir = os.path.dirname(db_path)
         if db_dir and not os.path.exists(db_dir):
@@ -18,7 +17,6 @@ def init_db(app, db=None):
             pass
         close_after = True
     with closing(db.cursor()) as cur:
-        # Users
         cur.execute(
             '''CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +27,6 @@ def init_db(app, db=None):
             )'''
         )
 
-        # Games
         cur.execute(
             '''CREATE TABLE IF NOT EXISTS games (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +41,6 @@ def init_db(app, db=None):
             )'''
         )
 
-        # Game players
         cur.execute(
             '''CREATE TABLE IF NOT EXISTS game_players (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +55,6 @@ def init_db(app, db=None):
         cur.execute('CREATE INDEX IF NOT EXISTS idx_game_players_game ON game_players(game_id)')
         cur.execute('CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id)')
 
-        # Hands
         cur.execute(
             '''CREATE TABLE IF NOT EXISTS hands (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +79,6 @@ def init_db(app, db=None):
             )'''
         )
 
-        # Migrations
         cur.execute("PRAGMA table_info('games')")
         cols = [c[1] for c in cur.fetchall()]
         if 'target_points' not in cols:

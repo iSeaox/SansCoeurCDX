@@ -1,0 +1,608 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques - Contrée{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="bi bi-graph-up"></i> Statistiques de la Contrée</h1>
+
+    <!-- Statistiques globales -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Statistiques Globales</h3>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-primary">{{ global_stats.total_games }}</h2>
+                        <p class="text-muted">Parties Totales</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-success">{{ global_stats.games_by_state.get('terminee', 0) }}</h2>
+                        <p class="text-muted">Parties Terminées</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-warning">{{ global_stats.games_by_state.get('en_cours', 0) }}</h2>
+                        <p class="text-muted">Parties En Cours</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-info">{{ global_stats.total_hands }}</h2>
+                        <p class="text-muted">Manches Jouées</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row text-center mt-3">
+                <div class="col-md-4 mb-3">
+                    <div class="stat-box">
+                        <h3 class="text-primary">{{ global_stats.avg_hands_per_game }}</h3>
+                        <p class="text-muted">Manches Moyennes/Partie</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="stat-box">
+                        <h3 class="text-primary">{{ global_stats.avg_total_points }}</h3>
+                        <p class="text-muted">Points Moyens/Partie</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="stat-box">
+                        <h3 class="text-primary">{{ global_stats.total_active_users }}</h3>
+                        <p class="text-muted">Joueurs Actifs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphique Performance des Équipes -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Victoires par Équipe</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="teamWinsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Scores Moyens par Équipe</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="teamScoresChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Événements Spéciaux -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h3 class="mb-0"><i class="bi bi-star-fill"></i> Événements Spéciaux</h3>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-2 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-danger">{{ special_events.coinches }}</h2>
+                        <p class="text-muted">Coinches</p>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-danger">{{ special_events.surcoinches }}</h2>
+                        <p class="text-muted">Surcoinches</p>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-warning">{{ special_events.capots }}</h2>
+                        <p class="text-muted">Capots</p>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-success">{{ special_events.generales }}</h2>
+                        <p class="text-muted">Générales</p>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="stat-box">
+                        <h2 class="text-info">{{ special_events.total_belotes }}</h2>
+                        <p class="text-muted">Belotes</p>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="stat-box">
+                        <h3 class="text-primary">{{ special_events.coinche_success_rate }}%</h3>
+                        <p class="text-muted">Réussite Coinches</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques Contrats et Atouts -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Distribution des Contrats</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="contractsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">Distribution des Atouts</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="trumpsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Taux de Réussite des Contrats -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h3 class="mb-0"><i class="bi bi-check-circle"></i> Taux de Réussite des Contrats</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="contractSuccessChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Distribution des Scores -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h3 class="mb-0"><i class="bi bi-graph-up"></i> Distribution des Points Marqués</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="scoreDistributionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Classement des Joueurs -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h3 class="mb-0"><i class="bi bi-trophy-fill"></i> Classement des Joueurs</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Joueur</th>
+                            <th>Parties Jouées</th>
+                            <th>Parties Gagnées</th>
+                            <th>Taux de Victoire</th>
+                            <th>Points Totaux</th>
+                            <th>Moyenne Points/Partie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in player_stats %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ player.username }}</strong></td>
+                            <td>{{ player.games_played }}</td>
+                            <td><span class="badge bg-success">{{ player.games_won }}</span></td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ player.win_rate }}%;" 
+                                         aria-valuenow="{{ player.win_rate }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ player.win_rate }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ player.total_points_scored }}</td>
+                            <td>{{ player.avg_points_per_game }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques des Preneurs -->
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h3 class="mb-0"><i class="bi bi-person-badge"></i> Statistiques des Preneurs</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Joueur</th>
+                            <th>Fois Preneur</th>
+                            <th>Contrats Réussis</th>
+                            <th>Taux de Réussite</th>
+                            <th>Moyenne Points Marqués</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for taker in taking_stats %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ taker.username }}</strong></td>
+                            <td>{{ taker.times_taken }}</td>
+                            <td><span class="badge bg-success">{{ taker.contracts_made }}</span></td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if taker.success_rate >= 50 %}bg-success{% else %}bg-warning{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ taker.success_rate }}%;" 
+                                         aria-valuenow="{{ taker.success_rate }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ taker.success_rate }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ taker.avg_points_made }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques Personnelles (si connecté) -->
+    {% if personal_stats %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0"><i class="bi bi-person-circle"></i> Mes Statistiques Personnelles</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Adversaires -->
+                <div class="col-md-6">
+                    <h4>Face à face avec les adversaires</h4>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Adversaire</th>
+                                    <th>Parties</th>
+                                    <th>Victoires</th>
+                                    <th>Défaites</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for opp in personal_stats.opponents %}
+                                <tr>
+                                    <td>{{ opp.opponent_name }}</td>
+                                    <td>{{ opp.games_played }}</td>
+                                    <td class="text-success">{{ opp.wins }}</td>
+                                    <td class="text-danger">{{ opp.losses }}</td>
+                                    <td><strong>{{ opp.win_rate }}%</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Partenaires -->
+                <div class="col-md-6">
+                    <h4>Avec mes partenaires</h4>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Partenaire</th>
+                                    <th>Parties</th>
+                                    <th>Victoires</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for partner in personal_stats.partners %}
+                                <tr>
+                                    <td>{{ partner.partner_name }}</td>
+                                    <td>{{ partner.games_played }}</td>
+                                    <td class="text-success">{{ partner.wins }}</td>
+                                    <td><strong>{{ partner.win_rate }}%</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Configuration des couleurs
+const chartColors = {
+    primary: 'rgb(13, 110, 253)',
+    success: 'rgb(25, 135, 84)',
+    danger: 'rgb(220, 53, 69)',
+    warning: 'rgb(255, 193, 7)',
+    info: 'rgb(13, 202, 240)',
+    secondary: 'rgb(108, 117, 125)',
+    teamA: 'rgb(54, 162, 235)',
+    teamB: 'rgb(255, 99, 132)',
+};
+
+// Graphique Victoires par Équipe
+const teamWinsCtx = document.getElementById('teamWinsChart');
+if (teamWinsCtx) {
+    new Chart(teamWinsCtx, {
+        type: 'pie',
+        data: {
+            labels: {{ team_perf.wins.keys() | list | tojson }},
+            datasets: [{
+                data: {{ team_perf.wins.values() | list | tojson }},
+                backgroundColor: [chartColors.teamA, chartColors.teamB, chartColors.secondary]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+// Graphique Scores Moyens par Équipe
+const teamScoresCtx = document.getElementById('teamScoresChart');
+if (teamScoresCtx) {
+    new Chart(teamScoresCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Équipe A', 'Équipe B'],
+            datasets: [{
+                label: 'Score Moyen',
+                data: [{{ team_perf.avg_scores.A }}, {{ team_perf.avg_scores.B }}],
+                backgroundColor: [chartColors.teamA, chartColors.teamB]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+// Graphique Distribution des Contrats
+const contractsCtx = document.getElementById('contractsChart');
+if (contractsCtx) {
+    const contractLabels = {{ contract_stats.distribution.keys() | list | sort | tojson }};
+    const contractData = contractLabels.map(label => {{ contract_stats.distribution | tojson }}[label]);
+    
+    new Chart(contractsCtx, {
+        type: 'bar',
+        data: {
+            labels: contractLabels,
+            datasets: [{
+                label: 'Nombre de fois joué',
+                data: contractData,
+                backgroundColor: chartColors.primary
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+// Graphique Distribution des Atouts
+const trumpsCtx = document.getElementById('trumpsChart');
+if (trumpsCtx) {
+    new Chart(trumpsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ trump_stats.distribution.keys() | list | tojson }},
+            datasets: [{
+                data: {{ trump_stats.distribution.values() | list | tojson }},
+                backgroundColor: [
+                    chartColors.danger,
+                    chartColors.primary,
+                    chartColors.success,
+                    chartColors.warning,
+                    chartColors.info,
+                    chartColors.secondary
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Graphique Taux de Réussite des Contrats
+const contractSuccessCtx = document.getElementById('contractSuccessChart');
+if (contractSuccessCtx) {
+    const successData = {{ contract_stats.success_rates | tojson }};
+    const labels = successData.map(item => item.contract);
+    const successRates = successData.map(item => item.success_rate);
+    
+    new Chart(contractSuccessCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Taux de Réussite (%)',
+                data: successRates,
+                backgroundColor: successRates.map(rate => rate >= 50 ? chartColors.success : chartColors.warning)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Réussite: ' + context.parsed.y + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Graphique Distribution des Scores
+const scoreDistCtx = document.getElementById('scoreDistributionChart');
+if (scoreDistCtx) {
+    const scoreDistData = {{ score_dist | tojson }};
+    const sortedKeys = Object.keys(scoreDistData).sort((a, b) => parseInt(a) - parseInt(b));
+    const labels = sortedKeys.map(key => key + '-' + (parseInt(key) + 9));
+    const data = sortedKeys.map(key => scoreDistData[key]);
+    
+    new Chart(scoreDistCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Nombre de manches',
+                data: data,
+                borderColor: chartColors.info,
+                backgroundColor: 'rgba(13, 202, 240, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return 'Points: ' + context[0].label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<style>
+.stat-box {
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    transition: transform 0.2s;
+}
+
+.stat-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.stat-box h2, .stat-box h3 {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.stat-box p {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header h3, .card-header h4 {
+    margin-bottom: 0;
+}
+
+.table th {
+    background-color: #f8f9fa;
+}
+
+canvas {
+    max-height: 400px;
+}
+</style>
+{% endblock %}

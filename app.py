@@ -13,6 +13,17 @@ from db import hands as hands_repo
 
 from services.scores import compute_score
 from services.get_day_heatmap import get_day_heatmap
+from services.statistics import (
+    get_global_statistics,
+    get_player_statistics,
+    get_contract_statistics,
+    get_trump_statistics,
+    get_special_events_statistics,
+    get_player_vs_player_statistics,
+    get_player_taking_statistics,
+    get_score_distribution,
+    get_team_performance
+)
 
 def create_app():
 	# Load environment variables from .env if present
@@ -551,7 +562,68 @@ def create_app():
 			}
 			for r in rows
 		]
-		return render_template('profile.html', username=username, ongoing=ongoing)
+		# Statistiques personnelles
+		from services.statistics import get_player_statistics, get_player_vs_player_statistics, get_player_taking_statistics
+		player_stats = get_player_statistics(g.db)
+		personal_stats = get_player_vs_player_statistics(g.db, user_id)
+		taking_stats = get_player_taking_statistics(g.db)
+
+		# Filtrer les stats du joueur courant
+		my_stats = next((p for p in player_stats if p['user_id'] == user_id), None)
+		my_taking_stats = next((t for t in taking_stats if t['user_id'] == user_id), None)
+
+		return render_template(
+			'profile.html',
+			username=username,
+			ongoing=ongoing,
+			my_stats=my_stats,
+			my_taking_stats=my_taking_stats,
+			personal_stats=personal_stats
+		)
+
+	@app.route('/statistiques')
+	def statistics():
+		# Statistiques globales
+		global_stats = get_global_statistics(g.db)
+		
+		# Statistiques par joueur
+		player_stats = get_player_statistics(g.db)
+		
+		# Statistiques sur les contrats
+		contract_stats = get_contract_statistics(g.db)
+		
+		# Statistiques sur les atouts
+		trump_stats = get_trump_statistics(g.db)
+		
+		# Événements spéciaux
+		special_events = get_special_events_statistics(g.db)
+		
+		# Statistiques des preneurs
+		taking_stats = get_player_taking_statistics(g.db)
+		
+		# Distribution des scores
+		score_dist = get_score_distribution(g.db)
+		
+		# Performance des équipes
+		team_perf = get_team_performance(g.db)
+		
+		# Statistiques personnelles si connecté
+		personal_stats = None
+		if session.get('user_id'):
+			personal_stats = get_player_vs_player_statistics(g.db, session.get('user_id'))
+		
+		return render_template(
+			'statistics.html',
+			global_stats=global_stats,
+			player_stats=player_stats,
+			contract_stats=contract_stats,
+			trump_stats=trump_stats,
+			special_events=special_events,
+			taking_stats=taking_stats,
+			score_dist=score_dist,
+			team_perf=team_perf,
+			personal_stats=personal_stats
+		)
 
 	@app.route('/admin')
 	def admin_panel():

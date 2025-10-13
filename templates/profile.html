@@ -1,40 +1,237 @@
 {% extends 'base.html' %}
 {% block title %}Profil{% endblock %}
 {% block content %}
-  <h2 class="mb-3">Profil</h2>
-  <div class="mb-4">
-    <div><strong>Utilisateur:</strong> {{ username }}</div>
-  </div>
-
-  <h4 class="mb-2">Parties en cours</h4>
-  {% if ongoing %}
-    <div class="table-responsive">
-      <table class="table table-striped align-middle">
-        <thead>
-          <tr>
-            <th>Créée</th>
-            <th>Dernière MAJ</th>
-            <th>Equipe A</th>
-            <th>Equipe B</th>
-            <th>Score</th>
-            <th>Objectif</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for g in ongoing %}
-            <tr>
-              <td><small class="text-muted">{{ g.created_at|fr_datetime }}</small></td>
-              <td><small class="text-muted">{{ g.updated_at|fr_datetime }}</small></td>
-              <td>{{ g.team_a }}</td>
-              <td>{{ g.team_b }}</td>
-              <td><strong>{{ g.score_a }}</strong> - <strong>{{ g.score_b }}</strong></td>
-              <td>{{ g.target_points }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <div class="container-fluid">
+    <div class="row mb-4">
+      <div class="col-12">
+        <h2 class="mb-3">
+          <i class="bi bi-person-circle"></i> Profil de {{ username }}
+        </h2>
+      </div>
     </div>
-  {% else %}
-    <div class="text-muted">Aucune partie en cours.</div>
-  {% endif %}
+
+    {% if my_stats %}
+    <div class="row mb-4">
+      <!-- Statistiques générales -->
+      <div class="col-md-6 mb-3">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Statistiques générales</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-primary">{{ my_stats.games_played }}</h3>
+                  <small class="text-muted">Parties jouées</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-success">{{ my_stats.games_won }}</h3>
+                  <small class="text-muted">Victoires</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-info">{{ my_stats.win_rate }}%</h3>
+                  <small class="text-muted">Taux de victoire</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-warning">{{ my_stats.avg_points_per_game }}</h3>
+                  <small class="text-muted">Pts moy./partie</small>
+                </div>
+              </div>
+            </div>
+            <hr class="my-3">
+            <div class="d-flex justify-content-between">
+              <span><strong>Parties terminées:</strong></span>
+              <span class="badge bg-secondary">{{ my_stats.games_finished }}</span>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <span><strong>Points totaux:</strong></span>
+              <span class="badge bg-info">{{ my_stats.total_points_scored }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistiques de preneur -->
+      {% if my_taking_stats %}
+      <div class="col-md-6 mb-3">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-trophy-fill"></i> Statistiques de preneur</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-primary">{{ my_taking_stats.times_taken }}</h3>
+                  <small class="text-muted">Contrats pris</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-success">{{ my_taking_stats.contracts_made }}</h3>
+                  <small class="text-muted">Réussis</small>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="text-center p-3 bg-light rounded">
+                  <h3 class="mb-0 text-info">{{ my_taking_stats.success_rate }}%</h3>
+                  <small class="text-muted">Taux de réussite</small>
+                </div>
+              </div>
+            </div>
+            <hr class="my-3">
+            <div class="d-flex justify-content-between">
+              <span><strong>Points moyens réalisés:</strong></span>
+              <span class="badge bg-warning text-dark">{{ my_taking_stats.avg_points_made }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Adversaires et partenaires -->
+    <div class="row mb-4">
+      {% if personal_stats and personal_stats.opponents %}
+      <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm">
+          <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-people-fill"></i> Face à vos adversaires</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Adversaire</th>
+                    <th class="text-center">Parties</th>
+                    <th class="text-center">V</th>
+                    <th class="text-center">D</th>
+                    <th class="text-center">Taux</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for opp in personal_stats.opponents %}
+                  <tr>
+                    <td><strong>{{ opp.opponent_name }}</strong></td>
+                    <td class="text-center">{{ opp.games_played }}</td>
+                    <td class="text-center"><span class="badge bg-success">{{ opp.wins }}</span></td>
+                    <td class="text-center"><span class="badge bg-danger">{{ opp.losses }}</span></td>
+                    <td class="text-center">
+                      <span class="badge {% if opp.win_rate >= 50 %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ opp.win_rate }}%
+                      </span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if personal_stats and personal_stats.partners %}
+      <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-person-hearts"></i> Avec vos partenaires</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Partenaire</th>
+                    <th class="text-center">Parties</th>
+                    <th class="text-center">Victoires</th>
+                    <th class="text-center">Taux</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for partner in personal_stats.partners %}
+                  <tr>
+                    <td><strong>{{ partner.partner_name }}</strong></td>
+                    <td class="text-center">{{ partner.games_played }}</td>
+                    <td class="text-center"><span class="badge bg-success">{{ partner.wins }}</span></td>
+                    <td class="text-center">
+                      <span class="badge {% if partner.win_rate >= 50 %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ partner.win_rate }}%
+                      </span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Parties en cours -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-header bg-warning">
+            <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Parties en cours</h5>
+          </div>
+          <div class="card-body">
+            {% if ongoing %}
+              <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Créée</th>
+                      <th>Dernière MAJ</th>
+                      <th>Equipe A</th>
+                      <th>Equipe B</th>
+                      <th class="text-center">Score</th>
+                      <th class="text-center">Objectif</th>
+                      <th class="text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for g in ongoing %}
+                      <tr>
+                        <td><small class="text-muted">{{ g.created_at|fr_datetime }}</small></td>
+                        <td><small class="text-muted">{{ g.updated_at|fr_datetime }}</small></td>
+                        <td>{{ g.team_a }}</td>
+                        <td>{{ g.team_b }}</td>
+                        <td class="text-center">
+                          <strong class="text-primary">{{ g.score_a }}</strong> 
+                          - 
+                          <strong class="text-danger">{{ g.score_b }}</strong>
+                        </td>
+                        <td class="text-center"><span class="badge bg-secondary">{{ g.target_points }}</span></td>
+                        <td class="text-center">
+                          <a href="{{ url_for('game_detail', game_id=g.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> Voir
+                          </a>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Aucune partie en cours.
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}

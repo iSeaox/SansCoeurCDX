@@ -378,7 +378,17 @@ const chartColors = {
 const contractsCtx = document.getElementById('contractsChart');
 if (contractsCtx) {
     const contractDistribution = {{ contract_stats.distribution | tojson }};
-    const contractLabels = {{ contract_stats.distribution.keys() | list | sort | tojson }};
+    const allLabels = {{ contract_stats.distribution.keys() | list | tojson }};
+    
+    // Fonction de tri personnalisée pour les contrats
+    const contractLabels = allLabels.sort((a, b) => {
+        // Les contrats spéciaux à la fin
+        if (a === 'Capot' || a === 'Générale') return 1;
+        if (b === 'Capot' || b === 'Générale') return -1;
+        // Tri numérique pour les autres
+        return parseInt(a) - parseInt(b);
+    });
+    
     const contractData = contractLabels.map(label => contractDistribution[label]);
     
     new Chart(contractsCtx, {
@@ -446,8 +456,18 @@ if (trumpsCtx) {
 const contractSuccessCtx = document.getElementById('contractSuccessChart');
 if (contractSuccessCtx) {
     const successData = {{ contract_stats.success_rates | tojson }};
-    const labels = successData.map(item => item.contract);
-    const successRates = successData.map(item => item.success_rate);
+    
+    // Tri des données de contrats dans l'ordre logique
+    const sortedSuccessData = successData.sort((a, b) => {
+        // Les contrats spéciaux à la fin
+        if (a.contract === 'Capot' || a.contract === 'Générale') return 1;
+        if (b.contract === 'Capot' || b.contract === 'Générale') return -1;
+        // Tri numérique pour les autres
+        return parseInt(a.contract) - parseInt(b.contract);
+    });
+    
+    const labels = sortedSuccessData.map(item => item.contract);
+    const successRates = sortedSuccessData.map(item => item.success_rate);
     
     new Chart(contractSuccessCtx, {
         type: 'bar',

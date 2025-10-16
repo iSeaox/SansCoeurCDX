@@ -93,7 +93,7 @@ def create_app():
 				if(not(row[3])):
 					flash('Votre compte est en cours de validation', 'success')
 					return render_template('login.html')
-
+				session.permanent = True
 				session.clear()
 				session['user_id'] = row[0]
 				session['user'] = row[1]

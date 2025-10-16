@@ -46,7 +46,7 @@ def create_app():
 	app.config.setdefault('SESSION_COOKIE_HTTPONLY', True)
 	app.config.setdefault('SESSION_COOKIE_SAMESITE', 'Lax')
 	app.config.setdefault('SESSION_COOKIE_SECURE', not app.config['DEBUG'])
-	app.config.setdefault('PERMANENT_SESSION_LIFETIME', timedelta(hours=8))
+	app.config.setdefault('PERMANENT_SESSION_LIFETIME', timedelta(days=1))
 
 	@app.before_request
 	def before_request():

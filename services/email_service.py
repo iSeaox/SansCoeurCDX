@@ -1,5 +1,6 @@
 import os
 import smtplib
+from typing import Optional
 from email.message import EmailMessage
 
 
@@ -43,7 +44,7 @@ def _load_smtp_config():
     }
 
 
-def _build_test_message(sender: str, to_email: str, username: str | None = None) -> EmailMessage:
+def _build_test_message(sender: str, to_email: str, username: Optional[str] = None) -> EmailMessage:
     subject = 'Email de test - SansCoeurCDX'
     lines = [
         'Bonjour,',
@@ -64,7 +65,7 @@ def _build_test_message(sender: str, to_email: str, username: str | None = None)
     return msg
 
 
-def send_test_email(to_email: str, username: str | None = None):
+def send_test_email(to_email: str, username: Optional[str] = None):
     if not to_email:
         raise ValueError("Adresse email du destinataire manquante")
 
@@ -121,7 +122,7 @@ def send_email(to_email: str, subject: str, body_text: str):
             return True
 
 
-def send_registration_email(to_email: str, username: str | None = None):
+def send_registration_email(to_email: str, username: Optional[str] = None):
     subject = 'Création de votre compte SansCoeurCDX'
     lines = [
         'Bonjour' + (f' {username}' if username else '') + ',',
@@ -134,7 +135,7 @@ def send_registration_email(to_email: str, username: str | None = None):
     return send_email(to_email, subject, '\n'.join(lines))
 
 
-def send_account_activated_email(to_email: str, username: str | None = None):
+def send_account_activated_email(to_email: str, username: Optional[str] = None):
     subject = 'Votre compte SansCoeurCDX est activé'
     lines = [
         'Bonjour' + (f' {username}' if username else '') + ',',
@@ -147,7 +148,7 @@ def send_account_activated_email(to_email: str, username: str | None = None):
     return send_email(to_email, subject, '\n'.join(lines))
 
 
-def send_email_update_confirmation(to_email: str, username: str | None = None, old_email: str | None = None):
+def send_email_update_confirmation(to_email: str, username: Optional[str] = None, old_email: Optional[str] = None):
     subject = 'Confirmation de modification de votre adresse email'
     lines = [
         'Bonjour' + (f' {username}' if username else '') + ',',

@@ -1,4 +1,5 @@
 from contextlib import closing
+from typing import Optional
 
 
 def get_active_users(db):
@@ -48,7 +49,7 @@ def email_in_use_by_other(db, email: str, exclude_user_id: int) -> bool:
         return cur.fetchone() is not None
 
 
-def update_user_email(db, user_id: int, email: str | None):
+def update_user_email(db, user_id: int, email: Optional[str]):
     with closing(db.cursor()) as cur:
         cur.execute(
             "UPDATE users SET email = ? WHERE id = ?",
@@ -58,7 +59,7 @@ def update_user_email(db, user_id: int, email: str | None):
         return cur.rowcount > 0
 
 
-def create_user(db, username: str, password_hash: str, created_at: str, email: str | None = None):
+def create_user(db, username: str, password_hash: str, created_at: str, email: Optional[str] = None):
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
@@ -78,7 +79,7 @@ def create_user(db, username: str, password_hash: str, created_at: str, email: s
         return cur.lastrowid
 
 
-def create_user_with_admin(db, username: str, password_hash: str, created_at: str, is_admin: bool = False, email: str | None = None):
+def create_user_with_admin(db, username: str, password_hash: str, created_at: str, is_admin: bool = False, email: Optional[str] = None):
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
@@ -95,7 +96,7 @@ def create_user_with_admin(db, username: str, password_hash: str, created_at: st
         return cur.lastrowid
 
 
-def create_inactive_user(db, username: str, password_hash: str, created_at: str, email: str | None = None):
+def create_inactive_user(db, username: str, password_hash: str, created_at: str, email: Optional[str] = None):
     """Create an inactive user (for self-registration)"""
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))

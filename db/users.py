@@ -169,10 +169,12 @@ def create_inactive_user(db, username: str, password_hash: str, created_at: str,
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
+            print("User already used")
             return None
         if email:
             cur.execute("SELECT id FROM users WHERE email = ? COLLATE NOCASE", (email,))
             if cur.fetchone():
+                print("Email already used")
                 return None
         cur.execute(
             "INSERT INTO users (username, password_hash, created_at, is_active, is_admin, email) VALUES (?, ?, ?, 0, 0, ?)",

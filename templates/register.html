@@ -90,12 +90,16 @@
         e.preventDefault();
         if(!checkForm(e)) {return false;}
         grecaptcha.enterprise.ready(async () => {
-          const token = await grecaptcha.enterprise.execute('{{ RECAPTCHA_SITE_KEY }}', {action: 'REGISTER'});
-          console.log(token);
+          try {
+            const token = await grecaptcha.enterprise.execute('{{ RECAPTCHA_SITE_KEY }}', {action: 'REGISTER'});
 
-          if (!token) throw new Error("Missing : Token reCAPTCHA");
-          document.getElementById('recaptcha_token').value = token;
-          document.getElementById('register-form').submit();
+            if (!token) throw new Error("Missing : Token reCAPTCHA");
+            document.getElementById('recaptcha_token').value = token;
+            document.getElementById('register-form').submit();
+          } catch (err) {
+            console.error('reCAPTCHA error:', err);
+            alert('Erreur lors de la vérification reCAPTCHA. Veuillez réessayer.');
+          }
         });
     }
     </script>

@@ -21,12 +21,26 @@
               <div class="col-md-8">
                 <form action="{{ url_for('profile') }}" method="post" class="row gy-2 gx-3 align-items-center">
                   <div class="col-12">
+                    <label for="username" class="form-label">Pseudo</label>
+                    <input type="text" class="form-control" id="username" name="new_username" value="{{ username or '' }}" minlength="3" maxlength="30" required>
+                    <div class="form-text">Votre pseudo est visible par les autres joueurs.</div>
+                  </div>
+                  <div class="col-12">
+                    <button type="submit" name="action" value="update_username" class="btn btn-primary">
+                      <i class="bi bi-person-check"></i> Mettre à jour le pseudo
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div class="col-md-8">
+                <form action="{{ url_for('profile') }}" method="post" class="row gy-2 gx-3 align-items-center">
+                  <div class="col-12">
                     <label for="email" class="form-label">Adresse email</label>
                     <input type="email" class="form-control" id="email" name="email" placeholder="votre@email.com" value="{{ email or '' }}" required>
                     <div class="form-text">Cette adresse sera utilisée pour votre compte.</div>
                   </div>
                   <div class="col-12">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" name="action" value="update_email">
                       <i class="bi bi-save"></i> Mettre à jour l'email
                     </button>
                   </div>

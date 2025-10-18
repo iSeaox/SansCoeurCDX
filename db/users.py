@@ -96,6 +96,16 @@ def can_request_password_reset(db, user_id: int, min_days: int = 30) -> bool:
         return delta.days >= min_days
 
 
+def update_user_username(db, user_id: int, new_username: str):
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "UPDATE users SET username = ? WHERE id = ?",
+            (new_username, user_id),
+        )
+        db.commit()
+        return cur.rowcount > 0
+
+
 def email_in_use_by_other(db, email: str, exclude_user_id: int) -> bool:
     if not email:
         return False

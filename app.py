@@ -623,34 +623,57 @@ def create_app():
 
 		# Handle email update
 		if request.method == 'POST':
-			new_email = (request.form.get('email') or '').strip()
-			if not new_email:
-				flash('Veuillez fournir une adresse email.', 'warning')
+			action = (request.form.get('action') or '').strip()
+			if action == 'update_email':
+				new_email = (request.form.get('email') or '').strip()
+				if not new_email:
+					flash('Veuillez fournir une adresse email.', 'warning')
+					return redirect(url_for('profile'))
+				if '@' not in new_email or '.' not in new_email.split('@')[-1]:
+					flash('Veuillez saisir un email valide.', 'danger')
+					return redirect(url_for('profile'))
+				# Check uniqueness and update
+				current = users_repo.find_user_by_id(g.db, user_id)
+				# current schema: (id, username, email, is_active, is_admin)
+				current_email = current[2] if current and len(current) > 2 else None
+				if (current_email or '').strip().lower() == new_email.lower():
+					flash('Aucune modification détectée.', 'info')
+					return redirect(url_for('profile'))
+				if users_repo.email_in_use_by_other(g.db, new_email, user_id):
+					flash('Cet email est déjà utilisé par un autre compte.', 'danger')
+					return redirect(url_for('profile'))
+				success = users_repo.update_user_email(g.db, user_id, new_email)
+				if success:
+					flash('Adresse email mise à jour.', 'success')
+					# Send confirmation email to the new address (best-effort)
+					try:
+						send_email_update_confirmation(new_email, username=username, old_email=current_email)
+					except Exception:
+						pass
+				else:
+					flash('Erreur lors de la mise à jour de l\'email.', 'danger')
 				return redirect(url_for('profile'))
-			if '@' not in new_email or '.' not in new_email.split('@')[-1]:
-				flash('Veuillez saisir un email valide.', 'danger')
+			elif action == 'update_username':
+				new_username = (request.form.get('new_username') or '').strip()
+				if not new_username or len(new_username) < 3:
+					flash('Le pseudo doit contenir au moins 3 caractères.', 'danger')
+					return redirect(url_for('profile'))
+				# Check uniqueness
+				existing = users_repo.find_user_by_username(g.db, new_username)
+				if existing and existing[0] != user_id:
+					flash('Ce pseudo est déjà utilisé.', 'danger')
+					return redirect(url_for('profile'))
+				if new_username.lower() == (username or '').lower():
+					flash('Aucune modification détectée.', 'info')
+					return redirect(url_for('profile'))
+				ok = users_repo.update_user_username(g.db, user_id, new_username)
+				if ok:
+					# Update session username as well
+					session['user'] = new_username
+					flash('Pseudo mis à jour.', 'success')
+				else:
+					flash('Erreur lors de la mise à jour du pseudo.', 'danger')
 				return redirect(url_for('profile'))
-			# Check uniqueness and update
-			current = users_repo.find_user_by_id(g.db, user_id)
-			# current schema: (id, username, email, is_active, is_admin)
-			current_email = current[2] if current and len(current) > 2 else None
-			if (current_email or '').strip().lower() == new_email.lower():
-				flash('Aucune modification détectée.', 'info')
-				return redirect(url_for('profile'))
-			if users_repo.email_in_use_by_other(g.db, new_email, user_id):
-				flash('Cet email est déjà utilisé par un autre compte.', 'danger')
-				return redirect(url_for('profile'))
-			success = users_repo.update_user_email(g.db, user_id, new_email)
-			if success:
-				flash('Adresse email mise à jour.', 'success')
-				# Send confirmation email to the new address (best-effort)
-				try:
-					send_email_update_confirmation(new_email, username=username, old_email=current_email)
-				except Exception:
-					pass
-			else:
-				flash('Erreur lors de la mise à jour de l\'email.', 'danger')
-			return redirect(url_for('profile'))
 		rows = games_repo.list_ongoing_games_for_user(g.db, user_id)
 		ongoing = [
 			{

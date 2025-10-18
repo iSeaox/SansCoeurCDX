@@ -1,5 +1,6 @@
 from contextlib import closing
 from typing import Optional
+from datetime import datetime
 
 
 def get_active_users(db):
@@ -22,7 +23,7 @@ def find_user_by_email(db, email: str):
         return None
     with closing(db.cursor()) as cur:
         cur.execute(
-            "SELECT id, username, password_hash, is_active, is_admin FROM users WHERE email = ? COLLATE NOCASE LIMIT 1",
+            "SELECT id, username, password_hash, is_active, is_admin, email FROM users WHERE email = ? COLLATE NOCASE LIMIT 1",
             (email,),
         )
         return cur.fetchone()
@@ -36,6 +37,63 @@ def find_user_by_id(db, user_id: int):
             (user_id,),
         )
         return cur.fetchone()
+
+
+def set_password_reset_token(db, user_id: int, token: str, expires_at_iso: str):
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "UPDATE users SET reset_token = ?, reset_token_expires_at = ?, last_password_reset_request_at = ? WHERE id = ?",
+            (token, expires_at_iso, datetime.utcnow().isoformat(timespec='seconds'), user_id),
+        )
+        db.commit()
+        return cur.rowcount > 0
+
+
+def get_user_by_reset_token(db, token: str):
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "SELECT id, username, email, reset_token_expires_at FROM users WHERE reset_token = ? LIMIT 1",
+            (token,),
+        )
+        return cur.fetchone()
+
+
+def clear_reset_token(db, user_id: int):
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "UPDATE users SET reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?",
+            (user_id,),
+        )
+        db.commit()
+        return cur.rowcount > 0
+
+
+def update_user_password_hash(db, user_id: int, password_hash: str):
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (password_hash, user_id),
+        )
+        db.commit()
+        return cur.rowcount > 0
+
+
+def can_request_password_reset(db, user_id: int, min_days: int = 30) -> bool:
+    """Return True if last_password_reset_request_at older than min_days or NULL."""
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "SELECT last_password_reset_request_at FROM users WHERE id = ?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row or not row[0]:
+            return True
+        try:
+            last = datetime.fromisoformat(row[0])
+        except Exception:
+            return True
+        delta = datetime.utcnow() - last
+        return delta.days >= min_days
 
 
 def email_in_use_by_other(db, email: str, exclude_user_id: int) -> bool:

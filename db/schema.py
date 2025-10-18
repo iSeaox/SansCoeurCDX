@@ -92,6 +92,15 @@ def init_db(app, db=None):
             cur.execute("ALTER TABLE users ADD COLUMN email TEXT")
             # Add a unique index on email if not exists; allow NULLs to avoid forcing existing users
             cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)")
+        # Password reset columns (idempotent)
+        cur.execute("PRAGMA table_info('users')")
+        user_cols = [c[1] for c in cur.fetchall()]
+        if 'reset_token' not in user_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN reset_token TEXT")
+        if 'reset_token_expires_at' not in user_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN reset_token_expires_at TEXT")
+        if 'last_password_reset_request_at' not in user_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN last_password_reset_request_at TEXT")
 
         cur.execute("PRAGMA table_info('hands')")
         h_cols = [c[1] for c in cur.fetchall()]

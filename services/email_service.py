@@ -163,3 +163,17 @@ def send_email_update_confirmation(to_email: str, username: Optional[str] = None
         'Si vous n\'êtes pas à l\'origine de ce changement, veuillez contacter un administrateur au plus vite.',
     ])
     return send_email(to_email, subject, '\n'.join(lines))
+
+
+def send_password_reset_email(to_email: str, username: Optional[str], reset_url: str):
+    subject = 'Réinitialisation de votre mot de passe'
+    lines = [
+        'Bonjour' + (f' {username}' if username else '') + ',',
+        '',
+        'Nous avons reçu une demande de réinitialisation de votre mot de passe.',
+        'Pour définir un nouveau mot de passe, cliquez sur le lien suivant:',
+        reset_url,
+        '',
+        'Si vous n’êtes pas à l’origine de cette demande, vous pouvez ignorer cet email.',
+    ]
+    return send_email(to_email, subject, '\n'.join(lines))

@@ -30,6 +30,7 @@ from services.email_service import (
 	send_registration_email,
 	send_account_activated_email,
 	send_email_update_confirmation,
+	send_password_reset_email,
 )
 
 def create_app():
@@ -138,6 +139,70 @@ def create_app():
 		
 			flash('Identifiants invalides.', 'danger')
 		return render_template('login.html')
+
+	@app.route('/mot-de-passe-oublie', methods=['GET', 'POST'])
+	def forgot_password():
+		if request.method == 'POST':
+			email = (request.form.get('email') or '').strip()
+			# Always respond with success to avoid user enumeration
+			response_msg = "Email de récupération envoyé."
+			# Try to locate user and enforce rate limit
+			user_row = users_repo.find_user_by_email(g.db, email)
+			if user_row:
+				user_id = user_row[0]
+				username = user_row[1]
+				# Enforce 30 days cooldown
+				if users_repo.can_request_password_reset(g.db, user_id, min_days=30):
+					# Generate unpredictable token and expiry (e.g., 24h)
+					import secrets
+					token = secrets.token_urlsafe(48)
+					from datetime import datetime, timedelta
+					expires_at = (datetime.utcnow() + timedelta(hours=24)).isoformat(timespec='seconds')
+					users_repo.set_password_reset_token(g.db, user_id, token, expires_at)
+					# Build absolute URL
+					reset_url = url_for('reset_password', token=token, _external=True)
+					try:
+						send_password_reset_email(email, username=username, reset_url=reset_url)
+					except Exception:
+						pass
+				# else: silently do nothing to avoid leaking policy
+			flash(response_msg, 'info')
+			return redirect(url_for('login'))
+		return render_template('forgot_password.html')
+
+	@app.route('/reinitialiser-mot-de-passe/<token>', methods=['GET', 'POST'])
+	def reset_password(token: str):
+		# Load user by token
+		row = users_repo.get_user_by_reset_token(g.db, token)
+		if not row:
+			flash('Lien de réinitialisation invalide ou expiré.', 'danger')
+			return redirect(url_for('login'))
+		user_id = row[0]
+		username = row[1]
+		expires_at_raw = row[3]
+		from datetime import datetime
+		try:
+			expires_at = datetime.fromisoformat(expires_at_raw) if expires_at_raw else None
+		except Exception:
+			expires_at = None
+		if not expires_at or datetime.utcnow() > expires_at:
+			flash('Lien de réinitialisation invalide ou expiré.', 'danger')
+			return redirect(url_for('login'))
+		if request.method == 'POST':
+			password = (request.form.get('password') or '').strip()
+			password_confirm = (request.form.get('password_confirm') or '').strip()
+			if len(password) < 8:
+				flash('Le mot de passe doit contenir au moins 8 caractères.', 'danger')
+				return render_template('reset_password.html', token=token, username=username)
+			if password != password_confirm:
+				flash('Les mots de passe ne correspondent pas.', 'danger')
+				return render_template('reset_password.html', token=token, username=username)
+			password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+			users_repo.update_user_password_hash(g.db, user_id, password_hash)
+			users_repo.clear_reset_token(g.db, user_id)
+			flash('Votre mot de passe a été mis à jour. Vous pouvez vous connecter.', 'success')
+			return redirect(url_for('login'))
+		return render_template('reset_password.html', token=token, username=username)
 
 	@app.route('/register', methods=['GET', 'POST'])
 	def register():

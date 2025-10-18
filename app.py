@@ -611,6 +611,26 @@ def create_app():
 			personal_stats=personal_stats
 		)
 
+	@app.route('/calcul-score')
+	def score_details():
+		class DuoCfg:
+			def __init__(self, alpha, lambda_, k, A, B):
+				self.alpha = alpha
+				self.lambda_ = lambda_
+				self.k = k
+				self.A = A
+				self.B = B
+
+		cfg = DuoCfg(
+			app.config['DUO_RANKING_ALPHA'],
+			app.config['DUO_RANKING_LAMBDA'],
+			app.config['DUO_RANKING_K'],
+			app.config['DUO_RANKING_A'],
+			app.config['DUO_RANKING_B'],
+		)
+		now = datetime.utcnow()
+		return render_template('score_details.html', duo_cfg=cfg, now=now)
+
 	@app.route('/admin')
 	def admin_panel():
 		if not admin_required():

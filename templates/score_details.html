@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Calcul des scores des duos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-3">Calcul des scores des duos</h1>
+  <p class="text-muted">Description de la méthode de calcul utilisée pour classer les duos.</p>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h2 class="h5 mb-0">Score de partie</h2>
+    </div>
+    <div class="card-body">
+      <p>La note d'une partie est pondérée par un exposant \(\alpha\) pour valoriser les victoires&nbsp;:</p>
+      <p class="mb-0">\[\text{note}_\alpha = \left( \dfrac{\text{pt}_{\text{fait}}}{\text{pt}_{\text{total}}} \right)^{\alpha}\]</p>
+      <p class="mt-2 mb-0">Plus \(\alpha > 1\) est grand, plus les notes supérieures à 1 sont accentuées et les notes inférieures à 1 sont réduites.</p>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h2 class="h5 mb-0">Facteur de confiance</h2>
+    </div>
+    <div class="card-body">
+      <p>Le facteur de confiance augmente avec le nombre de parties \(n\)&nbsp;:</p>
+      <p class="mb-0">\[\text{facteur_confiance}_k(n) = 1 - e^{-k\, n}\]</p>
+      <p class="mt-2 mb-0">Il limite l'impact de très petits échantillons. Paramètre&nbsp;: \(k = {{ '%.3f'|format(duo_cfg.k) }}\).</p>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h2 class="h5 mb-0">Décroissance temporelle</h2>
+    </div>
+    <div class="card-body">
+      <p>Les parties anciennes pèsent moins que les récentes via un coefficient exponentiel&nbsp;:</p>
+      <p class="mb-0">\[\text{poids}_i = e^{\lambda\, i}\]</p>
+  <p class="mt-2 mb-0">\(i = 0\) pour la plus récente. Paramètre&nbsp;: \(\lambda = {{ '%.3f'|format(duo_cfg.lambda_) }}\).</p>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h2 class="h5 mb-0">Formule complète</h2>
+    </div>
+    <div class="card-body">
+      <p>Score agrégé du duo sur \(n\) parties, normalisé par la somme des poids, puis modulé par le facteur de confiance&nbsp;:</p>
+      <p>\[\text{score}_{\text{duo}} = \left( \dfrac{ \sum\limits_{i=0}^{n-1} \big( \text{note}_\alpha(i) \cdot e^{\lambda i} \big) }{ \sum\limits_{i=0}^{n-1} e^{\lambda i} } \right) \cdot \big( 1 - e^{-k\, n} \big)\]</p>
+      <ul class="mb-0">
+        <li>\(\alpha = {{ '%.3f'|format(duo_cfg.alpha) }}\)</li>
+  <li>\(\lambda = {{ '%.3f'|format(duo_cfg.lambda_) }}\)</li>
+        <li>\(k = {{ '%.3f'|format(duo_cfg.k) }}\)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h2 class="h5 mb-0">Note affichée (échelle lisible)</h2>
+    </div>
+    <div class="card-body">
+      <p>Le score brut est transformé en note lisible par une fonction logarithmique&nbsp;:</p>
+      <p>\[\text{note}_{\text{affichée}} = A + B\, \log(\text{score}_{\text{duo}})\]</p>
+      <p class="mb-0">Paramètres d'affichage&nbsp;: \(A = {{ '%.3f'|format(duo_cfg.A) }}\), \(B = {{ '%.3f'|format(duo_cfg.B) }}\). Base logarithmique&nbsp;: \(e\).</p>
+    </div>
+  </div>
+
+  <div class="text-muted small">Dernière mise à jour&nbsp;: {{ now|default('')|fr_datetime }}</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']]
+      },
+      options: {renderActions: {addMenu: []}}
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+{% endblock %}

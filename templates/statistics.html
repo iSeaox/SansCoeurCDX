@@ -63,8 +63,13 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header bg-success text-white">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0"><i class="bi bi-people-fill"></i> Classement des Duos</h4>
+                    <small class="ms-2">
+                        <a class="link-light text-decoration-underline" href="{{ url_for('score_details') }}" title="Détails du calcul">
+                            Détail du calcul
+                        </a>
+                    </small>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">

@@ -85,7 +85,8 @@
   {% block scripts %}
     <script src="{{ url_for('static', filename='js/register.js') }}"></script>
     <script src="https://www.google.com/recaptcha/enterprise.js?render={{ RECAPTCHA_SITE_KEY }}"></script>
-    <script>
+  {% endblock %}
+  <script>
       document.addEventListener("DOMContentLoaded", (event) => {
         console.log("DOM fully loaded and parsed");
         document.getElementById("submitbtn").addEventListener("click", function(e) {
@@ -109,5 +110,4 @@
       });
     
     </script>
-  {% endblock %}
 {% endblock %}

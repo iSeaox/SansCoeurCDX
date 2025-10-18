@@ -98,7 +98,6 @@
           if (!token) throw new Error("Token vide");
 
           document.getElementById('recaptcha_token').value = token;
-          document.getElementById('register-form').submit();
         } catch (err) {
           console.error("reCAPTCHA failed:", err);
           alert("Erreur de sécurité. Veuillez réessayer.");

@@ -842,6 +842,28 @@ def create_app():
 			flash('Erreur lors de la modification.', 'danger')
 		return redirect(url_for('admin_panel'))
 
+	@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+	def delete_user(user_id: int):
+		"""Delete a user if no references exist. Admin only. Prevent self-deletion from admin panel."""
+		if not admin_required():
+			return redirect(url_for('index'))
+		if session.get('user_id') == user_id:
+			flash("Vous ne pouvez pas supprimer votre propre compte depuis l'admin.", 'warning')
+			return redirect(url_for('admin_panel'))
+		# Ensure user exists
+		u = users_repo.find_user_by_id(g.db, user_id)
+		if not u:
+			flash("Utilisateur introuvable.", 'warning')
+			return redirect(url_for('admin_panel'))
+		# Try deletion with referential checks
+		ok = users_repo.delete_user_if_no_references(g.db, user_id)
+		if ok:
+			flash('Utilisateur supprimé.', 'success')
+		else:
+			flash("Impossible de supprimer cet utilisateur car il est référencé dans des parties ou des manches.", 'danger')
+			# TODO
+		return redirect(url_for('admin_panel'))
+
 	@app.route('/admin/delete_game/<int:game_id>', methods=['POST'])
 	def delete_game(game_id: int):
 		if not admin_required():

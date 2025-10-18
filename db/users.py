@@ -195,3 +195,34 @@ def toggle_user_status(db, user_id: int):
         cur.execute("UPDATE users SET is_active = 1 - is_active WHERE id = ?", (user_id,))
         db.commit()
         return cur.rowcount > 0
+
+
+def can_delete_user(db, user_id: int) -> bool:
+    """Return True if the user has no references in games, game_players, or hands."""
+    with closing(db.cursor()) as cur:
+
+        cur.execute("SELECT COUNT(1) FROM games WHERE created_by = ?", (user_id,))
+        cnt_games = cur.fetchone()[0]
+        if cnt_games and cnt_games > 0:
+            return False
+
+        cur.execute("SELECT COUNT(1) FROM game_players WHERE user_id = ?", (user_id,))
+        cnt_gp = cur.fetchone()[0]
+        if cnt_gp and cnt_gp > 0:
+            return False
+
+        cur.execute("SELECT COUNT(1) FROM hands WHERE taker_user_id = ?", (user_id,))
+        cnt_hands = cur.fetchone()[0]
+        if cnt_hands and cnt_hands > 0:
+            return False
+    return True
+
+
+def delete_user_if_no_references(db, user_id: int) -> bool:
+    """Delete user only if they are not referenced anywhere. Returns True on success."""
+    if not can_delete_user(db, user_id):
+        return False
+    with closing(db.cursor()) as cur:
+        cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        db.commit()
+        return cur.rowcount > 0

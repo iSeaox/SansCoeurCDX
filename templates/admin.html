@@ -59,16 +59,22 @@
                 {% if u[0] != session.get('user_id') %}
                   <form method="post" action="{{ url_for('toggle_user', user_id=u[0]) }}" class="d-inline">
                     {% if u[2] %}
-                      <button type="submit" class="btn btn-sm btn-outline-warning" 
+                      <button type="submit" class="btn btn-sm btn-warning" 
                               onclick="return confirm('Désactiver cet utilisateur ?');">
                         Désactiver
                       </button>
                     {% else %}
-                      <button type="submit" class="btn btn-sm btn-outline-success"
+                      <button type="submit" class="btn btn-sm btn-success"
                               onclick="return confirm('Activer cet utilisateur ?');">
                         Activer
                       </button>
                     {% endif %}
+                  </form>
+                  <form method="post" action="{{ url_for('delete_user', user_id=u[0]) }}" class="d-inline ms-1">
+                    <button type="submit" class="btn btn-sm btn-danger" 
+                            onclick="return confirm('Supprimer définitivement cet utilisateur ? Cette action est irréversible.');">
+                      Supprimer
+                    </button>
                   </form>
                 {% else %}
                   <span class="text-muted">—</span>

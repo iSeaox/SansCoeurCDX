@@ -25,7 +25,3 @@ function checkForm(e) {
         return false;
     }
 }
-
-document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("submitbtn").addEventListener("click", onClick);
-});

@@ -86,22 +86,25 @@
     <script src="{{ url_for('static', filename='js/register.js') }}"></script>
     <script src="https://www.google.com/recaptcha/enterprise.js?render={{ RECAPTCHA_SITE_KEY }}"></script>
     <script>
-    function onClick(e) {
-        e.preventDefault();
-        if(!checkForm(e)) {return false;}
-        grecaptcha.enterprise.ready(async () => {
-          try {
-            const token = await grecaptcha.enterprise.execute('{{ RECAPTCHA_SITE_KEY }}', {action: 'REGISTER'});
+    document.getElementById("submitbtn").addEventListener("click", function(e) {
+      e.preventDefault();
 
-            if (!token) throw new Error("Missing : Token reCAPTCHA");
-            document.getElementById('recaptcha_token').value = token;
-            document.getElementById('register-form').submit();
-          } catch (err) {
-            console.error('reCAPTCHA error:', err);
-            alert('Erreur lors de la vérification reCAPTCHA. Veuillez réessayer.');
-          }
-        });
-    }
+      grecaptcha.enterprise.ready(async () => {
+        try {
+          const token = await grecaptcha.enterprise.execute('6LcB5O4rAAAAAJQQv1pTzobT0RxMgXTJYtTjNZGC', {
+            action: 'REGISTER'
+          });
+
+          if (!token) throw new Error("Token vide");
+
+          document.getElementById('recaptcha_token').value = token;
+          document.getElementById('register-form').submit();
+        } catch (err) {
+          console.error("reCAPTCHA failed:", err);
+          alert("Erreur de sécurité. Veuillez réessayer.");
+        }
+      });
+    });
     </script>
   {% endblock %}
 {% endblock %}

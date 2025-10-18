@@ -175,7 +175,7 @@ def create_inactive_user(db, username: str, password_hash: str, created_at: str,
 def list_all_users(db):
     """Return all users with id, username, is_active, is_admin, created_at"""
     with closing(db.cursor()) as cur:
-        cur.execute("SELECT id, username, is_active, is_admin, created_at FROM users ORDER BY username")
+        cur.execute("SELECT id, username, is_active, is_admin, created_at, email FROM users ORDER BY username")
         return cur.fetchall()
 
 

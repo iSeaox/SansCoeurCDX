@@ -16,6 +16,7 @@
           <tr>
             <th>ID</th>
             <th>Nom d'utilisateur</th>
+            <th>Email</th>
             <th>Statut</th>
             <th>Admin</th>
             <th>Créé le</th>
@@ -30,6 +31,13 @@
                 <strong>{{ u[1] }}</strong>
                 {% if u[0] == session.get('user_id') %}
                   <span class="badge text-bg-info ms-1">Vous</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u[5] %}
+                  <a href="mailto:{{ u[5] }}">{{ u[5] }}</a>
+                {% else %}
+                  <span class="text-muted">—</span>
                 {% endif %}
               </td>
               <td>

@@ -27,7 +27,6 @@ from services.statistics import (
 from services.duo_ranking import get_duo_rankings
 from services.email_service import (
 	send_test_email,
-	send_registration_email,
 	send_account_activated_email,
 	send_email_update_confirmation,
 	send_password_reset_email,
@@ -243,11 +242,6 @@ def create_app():
 			user_id = users_repo.create_inactive_user(g.db, username, password_hash, now, email=email)
 			
 			if user_id:
-				# Attempt to send registration email (non-blocking)
-				try:
-					send_registration_email(email, username=username)
-				except Exception:
-					pass
 				flash('Compte créé avec succès ! Votre compte doit être activé par un administrateur avant de pouvoir vous connecter.', 'info')
 				return redirect(url_for('login'))
 			else:

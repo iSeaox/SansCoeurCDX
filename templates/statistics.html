@@ -78,7 +78,7 @@
                             </thead>
                             <tbody>
                                 {% for duo in duo_rankings %}
-                                <tr>
+                                <tr class="{% if loop.index == 1 %}podium-gold{% elif loop.index == 2 %}podium-silver{% elif loop.index == 3 %}podium-bronze{% endif %}">
                                     <td><strong>{{ loop.index }}</strong></td>
                                     <td>
                                         <i class="bi bi-people"></i>
@@ -88,7 +88,7 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
                                                 {% if duo.note_display is not none %}
-                                                    <span class="badge bg-primary fs-6">{{ '%.2f'|format(duo.note_display) }}</span>
+                                                    <strong>{{ '%.2f'|format(duo.note_display) }}</strong>
                                                 {% else %}
                                                     <span class="text-muted">—</span>
                                                 {% endif %}
@@ -519,5 +519,30 @@ if (contractSuccessCtx) {
 canvas {
     max-height: 400px;
 }
+
+/* Podium styles for top 3 duos */
+.podium-gold > td {
+    background-color: rgba(212, 175, 55, 0.08);
+    border-top: 2px solid #d4af37;
+    border-bottom: 2px solid #d4af37;
+}
+.podium-gold > td:first-child { border-left: 2px solid #d4af37; border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.podium-gold > td:last-child  { border-right: 2px solid #d4af37; border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+
+.podium-silver > td {
+    background-color: rgba(192, 192, 192, 0.08);
+    border-top: 2px solid #c0c0c0;
+    border-bottom: 2px solid #c0c0c0;
+}
+.podium-silver > td:first-child { border-left: 2px solid #c0c0c0; border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.podium-silver > td:last-child  { border-right: 2px solid #c0c0c0; border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+
+.podium-bronze > td {
+    background-color: rgba(205, 127, 50, 0.08);
+    border-top: 2px solid #cd7f32;
+    border-bottom: 2px solid #cd7f32;
+}
+.podium-bronze > td:first-child { border-left: 2px solid #cd7f32; border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.podium-bronze > td:last-child  { border-right: 2px solid #cd7f32; border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
 </style>
 {% endblock %}

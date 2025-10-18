@@ -65,8 +65,8 @@ def create_app():
 	app.config['DUO_RANKING_ALPHA'] = _get_float_env('DUO_RANKING_ALPHA', 2.0)
 	app.config['DUO_RANKING_LAMBDA'] = _get_float_env('DUO_RANKING_LAMBDA', -0.1)
 	app.config['DUO_RANKING_K'] = _get_float_env('DUO_RANKING_K', 0.3)
-	app.config['DUO_RANKING_A'] = _get_float_env('DUO_RANKING_A', 100.0)
-	app.config['DUO_RANKING_B'] = _get_float_env('DUO_RANKING_B', 100.0)
+	app.config['DUO_RANKING_A'] = _get_float_env('DUO_RANKING_A', 77.398)
+	app.config['DUO_RANKING_B'] = _get_float_env('DUO_RANKING_B', 48.090)
 	app.config['DUO_RANKING_MIN_GAMES'] = _get_int_env('DUO_RANKING_MIN_GAMES', 1)
 	app.config['DUO_RANKING_LIMIT'] = _get_int_env('DUO_RANKING_LIMIT', 50)
 

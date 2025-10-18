@@ -32,6 +32,8 @@ from services.email_service import (
 	send_password_reset_email,
 )
 
+from services.recaptcha_check import verify_recaptcha
+
 def create_app():
 	# Load environment variables from .env if present
 	load_dotenv()
@@ -82,6 +84,10 @@ def create_app():
 	app.config['DUO_RANKING_MIN_GAMES'] = _get_int_env('DUO_RANKING_MIN_GAMES', 1)
 	app.config['DUO_RANKING_LIMIT'] = _get_int_env('DUO_RANKING_LIMIT', 50)
 	app.config['DUO_RANKING_SHOW_RAW'] = _get_bool_env('DUO_RANKING_SHOW_RAW', False)
+	app.config['RECAPTCHA_SITE_KEY'] = os.environ.get('RECAPTCHA_SITE_KEY', '')
+	app.config['RECAPTCHA_SECRET_KEY'] = os.environ.get('RECAPTCHA_SECRET_KEY', '')
+	app.config['RECAPTCHA_ID'] = os.environ.get('RECAPTCHA_ID', '')
+	app.config['RECAPTCHA_API_KEY'] = os.environ.get('RECAPTCHA_API_KEY', '')
 
 	@app.before_request
 	def before_request():
@@ -93,7 +99,6 @@ def create_app():
 		if db is not None:
 			db.close()
 
-	# Register Jinja filter for French datetime formatting
 	def fr_datetime(value):
 		if not value:
 			return ''
@@ -108,6 +113,8 @@ def create_app():
 			return str(value).replace('T', ' ')
 
 	app.jinja_env.filters['fr_datetime'] = fr_datetime
+	# Expose site key globally to Jinja templates
+	app.jinja_env.globals['RECAPTCHA_SITE_KEY'] = app.config['RECAPTCHA_SITE_KEY']
 
 	# ----- Routes -----
 	@app.route('/')
@@ -210,6 +217,12 @@ def create_app():
 			username = request.form.get('username', '').strip()
 			password = request.form.get('password', '').strip()
 			password_confirm = request.form.get('password_confirm', '').strip()
+			recaptacha_token = request.form.get('recaptcha_token', '')
+			
+			resp = verify_recaptcha(app.config['RECAPTCHA_SITE_KEY'], app.config['RECAPTCHA_API_KEY'], app.config['RECAPTCHA_ID'], recaptacha_token, "REGISTER")
+			if resp["riskAnalysis"]["score"] <= 0.3:
+				flash('Bip Bop, tu es probablement un BOT', 'danger')
+				return render_template('register.html')
 			
 			if not email or not username or not password:
 				flash('Nom d\'utilisateur et mot de passe requis.', 'danger')

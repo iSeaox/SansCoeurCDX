@@ -6,11 +6,11 @@
       <div class="card">
         <div class="card-body">
           <h3 class="card-title text-center mb-4">Créer un compte</h3>
-          <form method="post">
+          <form method="post" id="register-form">
             <div class="mb-3">
               <label for="username" class="form-label">Nom d'utilisateur</label>
               <input type="text" class="form-control" id="username" name="username" 
-                     value="{{ request.form.get('username', '') }}" required autofocus>
+                     value="{{ request.form.get('username', '') }}" autocomplete="username" required autofocus>
               <div class="form-text">Ce nom sera visible par les autres joueurs</div>
             </div>
             <div class="mb-3">
@@ -25,12 +25,12 @@
             </div>
             <div class="mb-3">
               <label for="password" class="form-label">Mot de passe</label>
-              <input type="password" class="form-control" id="password" name="password" required>
+              <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" required>
               <div class="form-text">Minimum 8 caractères</div>
             </div>
             <div class="mb-3">
               <label for="password_confirm" class="form-label">Confirmer le mot de passe</label>
-              <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+              <input type="password" class="form-control" id="password_confirm" name="password_confirm" autocomplete="new-password" required>
             </div>
             <div class="mb-3">
               <div class="alert alert-info">
@@ -45,7 +45,8 @@
                 <a href="#" data-bs-toggle="modal" data-bs-target="#emailUsageModal">En savoir plus</a>.
               </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Créer mon compte</button>
+            <input type="hidden" name="recaptcha_token" id="recaptcha_token">
+            <button type="submit" class="btn btn-primary w-100" id="submitbtn">Créer mon compte</button>
           </form>
           <div class="text-center mt-3">
             <p class="mb-0">Vous avez déjà un compte ? <a href="{{ url_for('login') }}">Se connecter</a></p>
@@ -64,7 +65,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p class="mb-2">Conformément au RGPD, au moment de la collecte de votre e‑mail, nous vous informons des éléments suivants&nbsp;:</p>
+          <p class="mb-2">Conformément au RGPD, au moment de la collecte de votre e-mail, nous vous informons des éléments suivants&nbsp;:</p>
           <ul>
             <li><strong>Identité du responsable du traitement&nbsp;:</strong> SansCoeurCDX (administrateur de la plateforme).</li>
             <li><strong>Finalité du traitement&nbsp;:</strong> récupération de compte uniquement (réinitialisation du mot de passe).</li>
@@ -81,33 +82,22 @@
     </div>
   </div>
 
-  <script>
-    document.querySelector('form').addEventListener('submit', function(e) {
-      const emailInput = document.getElementById('email');
-      const email = emailInput.value.trim();
-      const password = document.getElementById('password').value;
-      const passwordConfirm = document.getElementById('password_confirm').value;
-      
-      // Simple email format check in addition to HTML5 validation
-      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-      if (!email || !emailRegex.test(email)) {
+  {% block scripts %}
+    <script src="{{ url_for('static', filename='js/register.js') }}"></script>
+    <script src="https://www.google.com/recaptcha/enterprise.js?render={{ RECAPTCHA_SITE_KEY }}"></script>
+    <script>
+    function onClick(e) {
         e.preventDefault();
-        emailInput.focus();
-        alert("Veuillez saisir un email valide.");
-        return false;
-      }
+        if(!checkForm(e)) {return false;}
+        grecaptcha.enterprise.ready(async () => {
+          const token = await grecaptcha.enterprise.execute('{{ RECAPTCHA_SITE_KEY }}', {action: 'REGISTER'});
+          console.log(token);
 
-      if (password !== passwordConfirm) {
-        e.preventDefault();
-        alert('Les mots de passe ne correspondent pas.');
-        return false;
-      }
-      
-      if (password.length < 8) {
-        e.preventDefault();
-        alert('Le mot de passe doit contenir au moins 8 caractères.');
-        return false;
-      }
-    });
-  </script>
+          if (!token) throw new Error("Missing : Token reCAPTCHA");
+          document.getElementById('recaptcha_token').value = token;
+          document.getElementById('register-form').submit();
+        });
+    }
+    </script>
+  {% endblock %}
 {% endblock %}

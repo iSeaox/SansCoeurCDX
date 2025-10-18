@@ -88,6 +88,10 @@ def init_db(app, db=None):
         user_cols = [c[1] for c in cur.fetchall()]
         if 'is_admin' not in user_cols:
             cur.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+        if 'email' not in user_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN email TEXT")
+            # Add a unique index on email if not exists; allow NULLs to avoid forcing existing users
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)")
 
         cur.execute("PRAGMA table_info('hands')")
         h_cols = [c[1] for c in cur.fetchall()]

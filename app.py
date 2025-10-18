@@ -25,6 +25,12 @@ from services.statistics import (
     get_team_performance
 )
 from services.duo_ranking import get_duo_rankings
+from services.email_service import (
+	send_test_email,
+	send_registration_email,
+	send_account_activated_email,
+	send_email_update_confirmation,
+)
 
 def create_app():
 	# Load environment variables from .env if present
@@ -136,12 +142,17 @@ def create_app():
 	@app.route('/register', methods=['GET', 'POST'])
 	def register():
 		if request.method == 'POST':
+			email = (request.form.get('email') or '').strip()
 			username = request.form.get('username', '').strip()
 			password = request.form.get('password', '').strip()
 			password_confirm = request.form.get('password_confirm', '').strip()
 			
-			if not username or not password:
+			if not email or not username or not password:
 				flash('Nom d\'utilisateur et mot de passe requis.', 'danger')
+				return render_template('register.html')
+
+			if '@' not in email or '.' not in email.split('@')[-1]:
+				flash('Veuillez saisir un email valide.', 'danger')
 				return render_template('register.html')
 			
 			if len(password) < 8:
@@ -156,12 +167,22 @@ def create_app():
 			if existing_user:
 				flash('Ce nom d\'utilisateur est déjà pris.', 'danger')
 				return render_template('register.html')
+
+			existing_email = users_repo.find_user_by_email(g.db, email)
+			if existing_email:
+				flash('Un compte utilise déjà cet email.', 'danger')
+				return render_template('register.html')
 			
 			password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 			now = datetime.utcnow().isoformat(timespec='seconds')
-			user_id = users_repo.create_inactive_user(g.db, username, password_hash, now)
+			user_id = users_repo.create_inactive_user(g.db, username, password_hash, now, email=email)
 			
 			if user_id:
+				# Attempt to send registration email (non-blocking)
+				try:
+					send_registration_email(email, username=username)
+				except Exception:
+					pass
 				flash('Compte créé avec succès ! Votre compte doit être activé par un administrateur avant de pouvoir vous connecter.', 'info')
 				return redirect(url_for('login'))
 			else:
@@ -534,12 +555,43 @@ def create_app():
 			flash("Vous devez avoir au moins 4 utilisateurs actifs pour créer une partie (utilisez la CLI create-user).", 'warning')
 		return render_template('new_game.html', users=users)
 
-	@app.route('/profil')
+	@app.route('/profil', methods=['GET', 'POST'])
 	def profile():
 		if not login_required():
 			return redirect(url_for('login'))
 		user_id = session.get('user_id')
 		username = session.get('user')
+
+		# Handle email update
+		if request.method == 'POST':
+			new_email = (request.form.get('email') or '').strip()
+			if not new_email:
+				flash('Veuillez fournir une adresse email.', 'warning')
+				return redirect(url_for('profile'))
+			if '@' not in new_email or '.' not in new_email.split('@')[-1]:
+				flash('Veuillez saisir un email valide.', 'danger')
+				return redirect(url_for('profile'))
+			# Check uniqueness and update
+			current = users_repo.find_user_by_id(g.db, user_id)
+			# current schema: (id, username, email, is_active, is_admin)
+			current_email = current[2] if current and len(current) > 2 else None
+			if (current_email or '').strip().lower() == new_email.lower():
+				flash('Aucune modification détectée.', 'info')
+				return redirect(url_for('profile'))
+			if users_repo.email_in_use_by_other(g.db, new_email, user_id):
+				flash('Cet email est déjà utilisé par un autre compte.', 'danger')
+				return redirect(url_for('profile'))
+			success = users_repo.update_user_email(g.db, user_id, new_email)
+			if success:
+				flash('Adresse email mise à jour.', 'success')
+				# Send confirmation email to the new address (best-effort)
+				try:
+					send_email_update_confirmation(new_email, username=username, old_email=current_email)
+				except Exception:
+					pass
+			else:
+				flash('Erreur lors de la mise à jour de l\'email.', 'danger')
+			return redirect(url_for('profile'))
 		rows = games_repo.list_ongoing_games_for_user(g.db, user_id)
 		ongoing = [
 			{
@@ -562,14 +614,41 @@ def create_app():
 		my_stats = next((p for p in player_stats if p['user_id'] == user_id), None)
 		my_taking_stats = next((t for t in taking_stats if t['user_id'] == user_id), None)
 
+		# Load current email for display
+		user_row = users_repo.find_user_by_id(g.db, user_id)
+		# user_row schema: (id, username, email, is_active, is_admin)
+		current_email = user_row[2] if user_row and len(user_row) > 2 else None
+
 		return render_template(
 			'profile.html',
 			username=username,
+			email=current_email,
 			ongoing=ongoing,
 			my_stats=my_stats,
 			my_taking_stats=my_taking_stats,
 			personal_stats=personal_stats
 		)
+
+	@app.route('/profil/send_test_email', methods=['POST'])
+	def send_profile_test_email():
+		if not login_required():
+			return redirect(url_for('login'))
+		if not session.get('is_admin'):
+			flash("Accès administrateur requis pour envoyer un email de test.", 'danger')
+			return redirect(url_for('profile'))
+		user_id = session.get('user_id')
+		username = session.get('user')
+		user_row = users_repo.find_user_by_id(g.db, user_id)
+		email = user_row[2] if user_row and len(user_row) > 2 else None
+		if not email:
+			flash("Aucune adresse email définie pour votre compte.", 'warning')
+			return redirect(url_for('profile'))
+		try:
+			send_test_email(email, username=username)
+			flash("Email de test envoyé !", 'success')
+		except Exception as e:
+			flash(f"Échec de l'envoi de l'email: {e}", 'danger')
+		return redirect(url_for('profile'))
 
 	@app.route('/statistiques')
 	def statistics():
@@ -642,8 +721,27 @@ def create_app():
 	def toggle_user(user_id: int):
 		if not admin_required():
 			return redirect(url_for('index'))
+		# Load user before toggle to determine transition
+		u = users_repo.find_user_by_id(g.db, user_id)
+		old_active = None
+		email = None
+		username = None
+		if u:
+			# (id, username, email, is_active, is_admin)
+			username = u[1]
+			email = u[2]
+			old_active = int(u[3]) if u[3] is not None else None
 		success = users_repo.toggle_user_status(g.db, user_id)
 		if success:
+			# If user transitioned to active, attempt to send activation email (non-blocking)
+			new_active = None
+			if old_active is not None:
+				new_active = 0 if old_active == 1 else 1
+			if new_active == 1 and email:
+				try:
+					send_account_activated_email(email, username=username)
+				except Exception:
+					pass
 			flash('Statut utilisateur modifié.', 'success')
 		else:
 			flash('Erreur lors de la modification.', 'danger')
@@ -672,18 +770,25 @@ def create_app():
 		init_db(app)
 		print('Base de données initialisée.')
 
+	@app.cli.command('sync-db')
+	def sync_db_command():
+		"""Synchronise le schéma de la base sans altérer les données (idempotent)."""
+		init_db(app)
+		print('Schéma synchronisé (aucune donnée modifiée).')
+
 	@app.cli.command('create-user')
 	@click.option('--username', prompt=True, help='Nom d\'utilisateur (unique, insensible à la casse)')
 	@click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='Mot de passe')
+	@click.option('--email', prompt=False, default='', help='Adresse email (optionnelle)')
 	@click.option('--admin', is_flag=True, help='Créer un utilisateur administrateur')
-	def create_user_command(username: str, password: str, admin: bool):
+	def create_user_command(username: str, password: str, email: str, admin: bool):
 		username = username.strip()
 		if not username or not password or len(password) < 8:
 			print('Erreur: nom d\'utilisateur et mot de passe (>= 8 caractères) requis.')
 			return
 		password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 		with get_db(app) as db:
-			user_id = users_repo.create_user_with_admin(db, username, password_hash, datetime.utcnow().isoformat(timespec='seconds'), admin)
+			user_id = users_repo.create_user_with_admin(db, username, password_hash, datetime.utcnow().isoformat(timespec='seconds'), admin, email=(email or None))
 			if user_id is None:
 				print('Erreur: cet utilisateur existe déjà.')
 				return

@@ -16,41 +16,98 @@ def find_user_by_username(db, username: str):
         return cur.fetchone()
 
 
-def create_user(db, username: str, password_hash: str, created_at: str):
+def find_user_by_email(db, email: str):
+    if not email:
+        return None
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "SELECT id, username, password_hash, is_active, is_admin FROM users WHERE email = ? COLLATE NOCASE LIMIT 1",
+            (email,),
+        )
+        return cur.fetchone()
+
+
+def find_user_by_id(db, user_id: int):
+    """Return a tuple: (id, username, email, is_active, is_admin) for the given user_id, or None."""
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "SELECT id, username, email, is_active, is_admin FROM users WHERE id = ? LIMIT 1",
+            (user_id,),
+        )
+        return cur.fetchone()
+
+
+def email_in_use_by_other(db, email: str, exclude_user_id: int) -> bool:
+    if not email:
+        return False
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "SELECT id FROM users WHERE email = ? COLLATE NOCASE AND id != ? LIMIT 1",
+            (email, exclude_user_id),
+        )
+        return cur.fetchone() is not None
+
+
+def update_user_email(db, user_id: int, email: str | None):
+    with closing(db.cursor()) as cur:
+        cur.execute(
+            "UPDATE users SET email = ? WHERE id = ?",
+            (email, user_id),
+        )
+        db.commit()
+        return cur.rowcount > 0
+
+
+def create_user(db, username: str, password_hash: str, created_at: str, email: str | None = None):
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
             return None
+        if email:
+            cur.execute(
+                "SELECT id FROM users WHERE email = ? COLLATE NOCASE",
+                (email,),
+            )
+            if cur.fetchone():
+                return None
         cur.execute(
-            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin) VALUES (?, ?, ?, 1, 0)",
-            (username, password_hash, created_at),
+            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin, email) VALUES (?, ?, ?, 1, 0, ?)",
+            (username, password_hash, created_at, email),
         )
         db.commit()
         return cur.lastrowid
 
 
-def create_user_with_admin(db, username: str, password_hash: str, created_at: str, is_admin: bool = False):
+def create_user_with_admin(db, username: str, password_hash: str, created_at: str, is_admin: bool = False, email: str | None = None):
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
             return None
+        if email:
+            cur.execute("SELECT id FROM users WHERE email = ? COLLATE NOCASE", (email,))
+            if cur.fetchone():
+                return None
         cur.execute(
-            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin) VALUES (?, ?, ?, 1, ?)",
-            (username, password_hash, created_at, 1 if is_admin else 0),
+            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin, email) VALUES (?, ?, ?, 1, ?, ?)",
+            (username, password_hash, created_at, 1 if is_admin else 0, email),
         )
         db.commit()
         return cur.lastrowid
 
 
-def create_inactive_user(db, username: str, password_hash: str, created_at: str):
+def create_inactive_user(db, username: str, password_hash: str, created_at: str, email: str | None = None):
     """Create an inactive user (for self-registration)"""
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():
             return None
+        if email:
+            cur.execute("SELECT id FROM users WHERE email = ? COLLATE NOCASE", (email,))
+            if cur.fetchone():
+                return None
         cur.execute(
-            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin) VALUES (?, ?, ?, 0, 0)",
-            (username, password_hash, created_at),
+            "INSERT INTO users (username, password_hash, created_at, is_active, is_admin, email) VALUES (?, ?, ?, 0, 0, ?)",
+            (username, password_hash, created_at, email),
         )
         db.commit()
         return cur.lastrowid

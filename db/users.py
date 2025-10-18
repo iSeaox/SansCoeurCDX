@@ -166,6 +166,7 @@ def create_user_with_admin(db, username: str, password_hash: str, created_at: st
 
 def create_inactive_user(db, username: str, password_hash: str, created_at: str, email: Optional[str] = None):
     """Create an inactive user (for self-registration)"""
+    print("Create new user : ", username)
     with closing(db.cursor()) as cur:
         cur.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (username,))
         if cur.fetchone():

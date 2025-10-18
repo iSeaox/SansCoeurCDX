@@ -24,6 +24,7 @@ from services.statistics import (
     get_score_distribution,
     get_team_performance
 )
+from services.duo_ranking import get_duo_rankings
 
 def create_app():
 	# Load environment variables from .env if present
@@ -47,6 +48,27 @@ def create_app():
 	app.config.setdefault('SESSION_COOKIE_SAMESITE', 'Lax')
 	app.config.setdefault('SESSION_COOKIE_SECURE', not app.config['DEBUG'])
 	app.config.setdefault('PERMANENT_SESSION_LIFETIME', timedelta(days=1))
+
+	# Duo ranking configuration (server-side, overridable via env)
+	def _get_float_env(name: str, default: float) -> float:
+		try:
+			return float(os.environ.get(name, default))
+		except Exception:
+			return float(default)
+
+	def _get_int_env(name: str, default: int) -> int:
+		try:
+			return int(os.environ.get(name, default))
+		except Exception:
+			return int(default)
+
+	app.config['DUO_RANKING_ALPHA'] = _get_float_env('DUO_RANKING_ALPHA', 2.0)
+	app.config['DUO_RANKING_LAMBDA'] = _get_float_env('DUO_RANKING_LAMBDA', -0.1)
+	app.config['DUO_RANKING_K'] = _get_float_env('DUO_RANKING_K', 0.3)
+	app.config['DUO_RANKING_A'] = _get_float_env('DUO_RANKING_A', 100.0)
+	app.config['DUO_RANKING_B'] = _get_float_env('DUO_RANKING_B', 100.0)
+	app.config['DUO_RANKING_MIN_GAMES'] = _get_int_env('DUO_RANKING_MIN_GAMES', 1)
+	app.config['DUO_RANKING_LIMIT'] = _get_int_env('DUO_RANKING_LIMIT', 50)
 
 	@app.before_request
 	def before_request():
@@ -552,6 +574,16 @@ def create_app():
 		taking_stats = get_player_taking_statistics(g.db)
 		score_dist = get_score_distribution(g.db)
 		team_perf = get_team_performance(g.db)
+		duo_rankings = get_duo_rankings(
+			g.db,
+			alpha=app.config['DUO_RANKING_ALPHA'],
+			lambda_=app.config['DUO_RANKING_LAMBDA'],
+			k=app.config['DUO_RANKING_K'],
+			A=app.config['DUO_RANKING_A'],
+			B=app.config['DUO_RANKING_B'],
+			min_games=app.config['DUO_RANKING_MIN_GAMES'],
+			limit=app.config['DUO_RANKING_LIMIT'],
+		)
 		
 		personal_stats = None
 		if session.get('user_id'):
@@ -567,6 +599,7 @@ def create_app():
 			taking_stats=taking_stats,
 			score_dist=score_dist,
 			team_perf=team_perf,
+			duo_rankings=duo_rankings,
 			personal_stats=personal_stats
 		)
 

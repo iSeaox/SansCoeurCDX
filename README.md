@@ -41,6 +41,14 @@ DATABASE=data/coinche.db
 HOST=0.0.0.0
 PORT=5000
 DEBUG=true
+# Paramètres Classement des Duos (optionnels)
+# DUO_RANKING_ALPHA=1.3
+# DUO_RANKING_LAMBDA=-0.2
+# DUO_RANKING_K=0.3
+# DUO_RANKING_A=100
+# DUO_RANKING_B=100
+# DUO_RANKING_MIN_GAMES=1
+# DUO_RANKING_LIMIT=50
 ```
 
 3. **Initialiser la base de données :**
@@ -137,13 +145,28 @@ SansCoeurCDX/
 │   ├── games.py        # Repository parties
 │   └── hands.py        # Repository manches
 ├── services/           # Logique métier
-│   └── scores.py       # Calcul des scores
+│   ├── scores.py       # Calcul des scores de manche
+│   ├── statistics.py   # Statistiques agrégées
+│   └── duo_ranking.py  # Classement des duos (paramétrable via env)
 ├── templates/          # Templates Jinja2
 ├── static/            # Ressources statiques
 │   ├── css/
 │   └── js/
 └── requirements.txt
 ```
+
+### Paramétrage du Classement des Duos
+
+Le classement des duos utilise une formule pondérée configurable via variables d'environnement:
+
+- DUO_RANKING_ALPHA (défaut 1.3): valorise les bonnes notes (>1 accentue les victoires)
+- DUO_RANKING_LAMBDA (défaut -0.2): décroissance temporelle (négatif = parties anciennes pèsent moins)
+- DUO_RANKING_K (défaut 0.3): facteur de confiance selon le nombre de parties du duo
+- DUO_RANKING_A, DUO_RANKING_B (défaut 100, 100): transforme le score brut en note lisible via ln(score)
+- DUO_RANKING_MIN_GAMES (défaut 1): nombre minimum de parties pour afficher un duo
+- DUO_RANKING_LIMIT (défaut 50): nombre maximum de duos affichés
+
+Ces paramètres sont lus dans `app.py` et passés à `services.duo_ranking.get_duo_rankings`.
 
 ### Base de données
 

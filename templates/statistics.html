@@ -64,7 +64,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header bg-success text-white">
-                    <h4 class="mb-0"><i class="bi bi-people-fill"></i> Top 10 des Meilleures Équipes</h4>
+                    <h4 class="mb-0"><i class="bi bi-people-fill"></i> Classement des Duos</h4>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -72,50 +72,45 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Paire</th>
-                                    <th class="text-center">Parties Jouées</th>
-                                    <th class="text-center">Victoires</th>
-                                    <th class="text-center">Taux de Victoire</th>
-                                    <th class="text-center">Points Moyens</th>
+                                    <th>Duo</th>
+                                    <th>Note</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for pair in team_perf.pairs %}
+                                {% for duo in duo_rankings %}
                                 <tr>
                                     <td><strong>{{ loop.index }}</strong></td>
                                     <td>
-                                        <i class="bi bi-trophy{% if loop.index == 1 %}-fill text-warning{% elif loop.index == 2 %} text-secondary{% elif loop.index == 3 %} text-danger{% endif %}"></i>
-                                        <strong>{{ pair.pair_name }}</strong>
+                                        <i class="bi bi-people"></i>
+                                        <strong>{{ duo.duo_name }}</strong>
                                     </td>
-                                    <td class="text-center">{{ pair.games_played }}</td>
-                                    <td class="text-center"><span class="badge bg-success">{{ pair.games_won }}</span></td>
-                                    <td class="text-center">
-                                        <div class="progress" style="height: 20px; min-width: 100px;">
-                                            <div class="progress-bar {% if pair.win_rate >= 60 %}bg-success{% elif pair.win_rate >= 40 %}bg-info{% else %}bg-warning{% endif %}" 
-                                                 role="progressbar" 
-                                                 style="width: {{ pair.win_rate }}%;" 
-                                                 aria-valuenow="{{ pair.win_rate }}" 
-                                                 aria-valuemin="0" 
-                                                 aria-valuemax="100">
-                                                {{ pair.win_rate }}%
+                                    <td>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                {% if duo.note_display is not none %}
+                                                    <span class="badge bg-primary fs-6">{{ '%.2f'|format(duo.note_display) }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
                                             </div>
+                                            <small class="text-muted">score brut: {{ '%.3f'|format(duo.score_raw) }}</small>
                                         </div>
                                     </td>
-                                    <td class="text-center"><strong>{{ pair.avg_points }}</strong></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    {% if not team_perf.pairs %}
+                    {% if not duo_rankings %}
                     <div class="alert alert-info mb-0">
-                        <i class="bi bi-info-circle"></i> Aucune paire n'a encore terminé de partie.
+                        <i class="bi bi-info-circle"></i> Aucun duo n'a encore de parties terminées.
                     </div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
+
 
     <div class="card mb-4">
         <div class="card-header bg-warning text-dark">

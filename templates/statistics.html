@@ -93,7 +93,9 @@
                                                     <span class="text-muted">—</span>
                                                 {% endif %}
                                             </div>
-                                            <small class="text-muted">score brut: {{ '%.3f'|format(duo.score_raw) }}</small>
+                                            {% if duo_show_raw %}
+                                                <small class="text-muted">score brut: {{ '%.3f'|format(duo.score_raw) }}</small>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>

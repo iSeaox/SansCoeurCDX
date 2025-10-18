@@ -62,6 +62,12 @@ def create_app():
 		except Exception:
 			return int(default)
 
+	def _get_bool_env(name: str, default: bool) -> bool:
+		val = os.environ.get(name)
+		if val is None:
+			return bool(default)
+		return val.strip().lower() in ('1', 'true', 'yes', 'on')
+
 	app.config['DUO_RANKING_ALPHA'] = _get_float_env('DUO_RANKING_ALPHA', 2.0)
 	app.config['DUO_RANKING_LAMBDA'] = _get_float_env('DUO_RANKING_LAMBDA', -0.1)
 	app.config['DUO_RANKING_K'] = _get_float_env('DUO_RANKING_K', 0.3)
@@ -69,6 +75,7 @@ def create_app():
 	app.config['DUO_RANKING_B'] = _get_float_env('DUO_RANKING_B', 48.090)
 	app.config['DUO_RANKING_MIN_GAMES'] = _get_int_env('DUO_RANKING_MIN_GAMES', 1)
 	app.config['DUO_RANKING_LIMIT'] = _get_int_env('DUO_RANKING_LIMIT', 50)
+	app.config['DUO_RANKING_SHOW_RAW'] = _get_bool_env('DUO_RANKING_SHOW_RAW', False)
 
 	@app.before_request
 	def before_request():
@@ -600,6 +607,7 @@ def create_app():
 			score_dist=score_dist,
 			team_perf=team_perf,
 			duo_rankings=duo_rankings,
+			duo_show_raw=app.config['DUO_RANKING_SHOW_RAW'],
 			personal_stats=personal_stats
 		)
 

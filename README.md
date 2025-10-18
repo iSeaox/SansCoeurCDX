@@ -49,6 +49,7 @@ DEBUG=true
 # DUO_RANKING_B=100
 # DUO_RANKING_MIN_GAMES=1
 # DUO_RANKING_LIMIT=50
+# DUO_RANKING_SHOW_RAW=true
 ```
 
 3. **Initialiser la base de données :**
@@ -165,6 +166,8 @@ Le classement des duos utilise une formule pondérée configurable via variables
 - DUO_RANKING_A, DUO_RANKING_B (défaut 100, 100): transforme le score brut en note lisible via ln(score)
 - DUO_RANKING_MIN_GAMES (défaut 1): nombre minimum de parties pour afficher un duo
 - DUO_RANKING_LIMIT (défaut 50): nombre maximum de duos affichés
+ - DUO_RANKING_LIMIT (défaut 50): nombre maximum de duos affichés
+ - DUO_RANKING_SHOW_RAW (défaut true): afficher ou masquer le score brut à droite de la note
 
 Ces paramètres sont lus dans `app.py` et passés à `services.duo_ranking.get_duo_rankings`.
 
